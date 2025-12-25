@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Trash2, ShoppingCart, Plus, Minus, Coffee, Banknote, Smartphone, CreditCard, User, Search, X, Settings, Ruler, Save, Printer, DollarSign, ChevronDown, Scissors } from 'lucide-react';
 import { usePOS } from '../context/POSContext';
 import { PaymentMethod, Customer } from '../types';
-import { createTransaction } from '../handle_tool/transactions.service';
+// import { createTransaction } from '../handle_tool/transactions.service';
+import { createTransaction } from '../services/transactions.service';
 
 interface CartSidebarProps {
     onClose?: () => void;
