@@ -1,0 +1,15 @@
+/* Production CSS entry: include Tailwind base/components/utilities via PostCSS build. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: 'Cairo', sans-serif;
+  background-color: #F3F4F6;
+}
+
+/* Add any project-specific styles below */

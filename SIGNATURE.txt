@@ -1,0 +1,7 @@
+POS App
+Version: 1.0.0
+
+Signed by: M.Abaza
+Contact: Wa:01029495968
+
+This file is included in the packaged application as an embedded signature/credit.

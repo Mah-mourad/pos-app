@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>POS App</title>
+    <!-- Tailwind will be included via PostCSS in production; CDN removed -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind config moved to tailwind.config.cjs for build-time compilation -->
+    <style>
+      :root {
+        --color-primary: 227 30 36;
+        --color-sidebar: 104 8 8;
+        --app-radius: 0.5rem; /* default lg */
+      }
+      body {
+        font-family: 'Cairo', sans-serif;
+        background-color: #F3F4F6;
+      }
+      .dark body {
+        background-color: #111827; /* gray-900 */
+        color: #f3f4f6;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "qrcode": "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="./index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="./index.tsx"></script>
+</body>
+</html>

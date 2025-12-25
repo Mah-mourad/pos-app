@@ -1,0 +1,64 @@
+{
+  "name": "pos-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "description": "POS desktop application",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "if exist release rd /s /q release",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron . --url=http://localhost:3000\"",
+    "preelectron:build": "taskkill /f /im electron.exe || echo. && taskkill /f /im \"POS App.exe\" || echo.",
+    "electron:build": "npm run clean && npm run build && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "lucide-react": "^0.554.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "qrcode": "1.5.3",
+    "@supabase/supabase-js": "2",
+    "@google/genai": "^1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "electron": "^26.4.0",
+    "electron-builder": "^24.6.0",
+    "concurrently": "^8.2.0",
+    "wait-on": "^7.0.1",
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.24",
+    "autoprefixer": "^10.4.14"
+  },
+  "build": {
+    "appId": "com.example.posapp",
+    "productName": "POS App",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "icon.ico",
+      "package.json",
+      "SIGNATURE.txt"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "icon": "icon.ico",
+      "target": ["nsis", "zip"]
+    }
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowElevation": true,
+    "allowToChangeInstallationDirectory": true
+  }
+  ,
+  "author": "M.Abaza - Wa:01029495968"
+}
