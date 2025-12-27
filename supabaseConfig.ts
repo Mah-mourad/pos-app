@@ -63,3 +63,6 @@ export const isConfigured = !!(supabaseUrl && supabaseAnonKey);
 export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+
+
+
