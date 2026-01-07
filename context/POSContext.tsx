@@ -1,6 +1,28 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, CartItem, Transaction, ViewState, ReceiptSettings, ReceiptItemConfig, PaymentMethod, Customer, Expense, Service, PaymentRecord, AppSettings, User, Permission, UserRole, Machine, MachineReading, Supplier, AIConfig } from '../types';
+import {
+  Product,
+  CartItem,
+  Transaction,
+  ViewState,
+  ReceiptSettings,
+  ReceiptItemConfig,
+  PaymentMethod,
+  Customer,
+  Expense,
+  Service,
+  PaymentRecord,
+  AppSettings,
+  User,
+  Permission,
+  UserRole,
+  Machine,
+  MachineReading,
+  Supplier,
+  AIConfig,
+  Category
+} from '../types';
+
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, DEFAULT_RECEIPT_SETTINGS, DEFAULT_RECEIPT_LAYOUT, INITIAL_CUSTOMERS, INITIAL_EXPENSES, DEFAULT_APP_SETTINGS, APP_THEMES, INITIAL_USERS, INITIAL_TRANSACTIONS, DEFAULT_AI_CONFIG } from '../constants';
 import { translations, TranslationKey } from '../translations';
 import QRCode from 'qrcode';
@@ -61,7 +83,11 @@ interface POSContextType {
   machineReadings: MachineReading[];
   users: User[];
   suppliers: Supplier[]; // New
-  currentUser: User | null;
+    currentUser: User | null;
+    
+    selectedCustomer: Customer | null;
+setSelectedCustomer: (customer: Customer | null) => void;
+
   
   currentView: ViewState;
   setView: (view: ViewState) => void;
@@ -139,6 +165,11 @@ interface POSContextType {
   connectionError: string | null;
 }
 
+type SettingsRow = {
+  key: 'app' | 'receipt' | 'ai';
+  value: any;
+};
+
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
 export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -153,7 +184,10 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [machineReadings, setMachineReadings] = useState<MachineReading[]>([]);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]); // New Supplier State
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
   
   const [currentView, setView] = useState<ViewState>(ViewState.LOGIN);
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>(DEFAULT_RECEIPT_SETTINGS);
@@ -299,11 +333,17 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                                                 setCategories(prev => prev.map((item) => item.name === newRow.name ? newRow : item).sort((a, b) => a.order_index - b.order_index));
                                             }
                                             if (eventType === 'DELETE') setCategories(prev => prev.filter((item) => item.name !== oldRow.name).sort((a, b) => a.order_index - b.order_index));
-                                            break;                    case 'settings':
-                        if (newRow.key === 'app') setAppSettings(newRow.value);
-                        if (newRow.key === 'receipt') setReceiptSettings(newRow.value);
-                        if (newRow.key === 'ai') setAiSettings(newRow.value);
                         break;
+                  case 'settings': {
+  const row = newRow as SettingsRow;
+
+  if (row.key === 'app') setAppSettings(row.value);
+  if (row.key === 'receipt') setReceiptSettings(row.value);
+  if (row.key === 'ai') setAiSettings(row.value);
+
+  break;
+}
+
                 }
             })
             .subscribe();
@@ -506,7 +546,9 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     dbWrite('transactions', 'insert', transaction);
     
     clearCart();
-    return transaction;
+setSelectedCustomer(null); // ← تصفير العميل
+return transaction;
+
   };
 
   const markTransactionAsPaid = (transactionId: string) => {
@@ -948,7 +990,9 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       aiSettings, updateAiSettings,
       exportData, importData, clearAllData,
       t,
-      serverStatus, connectionError
+      serverStatus, connectionError, selectedCustomer,
+setSelectedCustomer,
+
     }}>
       {children}
     </POSContext.Provider>
@@ -962,3 +1006,539 @@ export const usePOS = () => {
   }
   return context;
 };
+
+
+
+
+
+
+
+// import React, {
+//   createContext,
+//   useContext,
+//   useState,
+//   useEffect,
+//   ReactNode,
+// } from 'react';
+
+// import {
+//   Product,
+//   CartItem,
+//   Transaction,
+//   ViewState,
+//   ReceiptSettings,
+//   PaymentMethod,
+//   Customer,
+//   Expense,
+//   Service,
+//   PaymentRecord,
+//   AppSettings,
+//   User,
+//   Permission,
+//   Machine,
+//   MachineReading,
+//   Supplier,
+//   AIConfig,
+// } from '../types';
+
+// import {
+//   INITIAL_PRODUCTS,
+//   INITIAL_CATEGORIES,
+//   INITIAL_CUSTOMERS,
+//   INITIAL_EXPENSES,
+//   INITIAL_USERS,
+//   INITIAL_TRANSACTIONS,
+//   DEFAULT_RECEIPT_SETTINGS,
+//   DEFAULT_APP_SETTINGS,
+//   DEFAULT_AI_CONFIG,
+// } from '../constants';
+
+// import { translations, TranslationKey } from '../translations';
+// import { supabase, isConfigured } from '../supabaseConfig';
+
+// /* ===========================
+//    Helpers
+// =========================== */
+
+// const safeStringify = (obj: any) => {
+//   try {
+//     return JSON.stringify(obj);
+//   } catch {
+//     return '';
+//   }
+// };
+
+// const sanitize = (data: any): any => {
+//   if (data === undefined || typeof data === 'function') return null;
+//   if (Array.isArray(data)) return data.map(sanitize);
+//   if (data instanceof Date) return data.toISOString();
+//   if (typeof data === 'object' && data !== null) {
+//     const out: any = {};
+//     for (const k in data) out[k] = sanitize(data[k]);
+//     return out;
+//   }
+//   return data;
+// };
+
+// /* ===========================
+//    Context
+// =========================== */
+
+// interface POSContextType {
+//   products: Product[];
+//   categories: any[];
+//   cart: CartItem[];
+//   transactions: Transaction[];
+//   customers: Customer[];
+//   expenses: Expense[];
+//   machines: Machine[];
+//   machineReadings: MachineReading[];
+//   users: User[];
+//   suppliers: Supplier[];
+//   currentUser: User | null;
+
+//   currentView: ViewState;
+//   setView: (v: ViewState) => void;
+
+//   addToCart: (item: CartItem) => void;
+//   removeFromCart: (id: string, index: number) => void;
+//   updateQuantity: (index: number, delta: number) => void;
+//   setQuantity: (index: number, q: number) => void;
+//   updateCartItemDimensions: (i: number, w: number, h: number) => void;
+//   toggleServiceForCartItem: (i: number, s: Service) => void;
+//   clearCart: () => void;
+
+//   completeTransaction: (
+//     method: PaymentMethod,
+//     customer?: Customer,
+//     paidAmount?: number
+//   ) => Transaction | undefined;
+
+//   addPaymentToTransaction: (
+//     transactionId: string,
+//     amount: number,
+//     method: PaymentMethod
+//   ) => void;
+
+//   collectDebtFromCustomer: (
+//     customerId: string,
+//     amount: number,
+//     method: PaymentMethod
+//   ) => void;
+
+//   deleteTransaction: (id: string) => void;
+
+//   login: (u: string, p: string) => boolean;
+//   logout: () => void;
+//   hasPermission: (p: Permission) => boolean;
+
+//   totalAmount: number;
+
+//   receiptSettings: ReceiptSettings;
+//   appSettings: AppSettings;
+//   aiSettings: AIConfig;
+
+//   t: (k: string, p?: any) => string;
+
+//   serverStatus: boolean;
+//   connectionError: string | null;
+// }
+
+// const POSContext = createContext<POSContextType | undefined>(undefined);
+
+// /* ===========================
+//    Provider
+// =========================== */
+
+// export const POSProvider = ({ children }: { children: ReactNode }) => {
+//   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+//   const [categories, setCategories] = useState<any[]>(INITIAL_CATEGORIES);
+//   const [cart, setCart] = useState<CartItem[]>([]);
+//   const [transactions, setTransactions] =
+//     useState<Transaction[]>(INITIAL_TRANSACTIONS);
+//   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+//   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
+//   const [machines, setMachines] = useState<Machine[]>([]);
+//   const [machineReadings, setMachineReadings] =
+//     useState<MachineReading[]>([]);
+//   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+//   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+//   const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+//   const [currentView, setView] = useState<ViewState>(ViewState.LOGIN);
+//   const [receiptSettings] = useState<ReceiptSettings>(
+//     DEFAULT_RECEIPT_SETTINGS
+//   );
+//   const [appSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+//   const [aiSettings] = useState<AIConfig>(DEFAULT_AI_CONFIG);
+
+//   const [serverStatus, setServerStatus] = useState(false);
+//   const [connectionError, setConnectionError] = useState<string | null>(null);
+
+//   /* ===========================
+//      Init + Users load (FIX LOGIN)
+//   =========================== */
+    
+//     useEffect(() => {
+//   if (!isConfigured || !supabase) {
+//     setServerStatus(false);
+//     return;
+//   }
+
+//   setServerStatus(true);
+
+//   const load = async () => {
+//     const tables = [
+//       ['products', setProducts],
+//       ['categories', setCategories],
+//       ['customers', setCustomers],
+//       ['transactions', setTransactions],
+//       ['expenses', setExpenses],
+//       ['suppliers', setSuppliers],
+//       ['users', setUsers],
+//     ];
+
+//     for (const [table, setter] of tables) {
+//       const { data, error } = await supabase.from(table).select('*');
+//       if (!error && data) setter(data);
+//     }
+//   };
+
+//   load();
+// }, []);
+
+
+//   useEffect(() => {
+//     const localUsers = localStorage.getItem('pos_users');
+//     if (localUsers) {
+//       try {
+//         setUsers(JSON.parse(localUsers));
+//       } catch {}
+//     }
+
+//     if (isConfigured && supabase) {
+//       setServerStatus(true);
+//       supabase
+//         .from('users')
+//         .select('*')
+//         .then(({ data, error }) => {
+//           if (error) {
+//             setConnectionError(error.message);
+//           }
+//           if (data && data.length > 0) {
+//             setUsers(data);
+//           }
+//         });
+//     } else {
+//       setServerStatus(false);
+//     }
+//   }, []);
+
+//   useEffect(() => {
+//     localStorage.setItem('pos_users', safeStringify(users));
+//   }, [users]);
+
+//   /* ===========================
+//      Cart
+//   =========================== */
+
+//   const addToCart = (item: CartItem) => {
+//     setCart(prev => [...prev, item]);
+//   };
+
+//   const removeFromCart = (_: string, index: number) => {
+//     setCart(prev => prev.filter((_, i) => i !== index));
+//   };
+
+//   const updateQuantity = (index: number, delta: number) => {
+//     setCart(prev => {
+//       const c = [...prev];
+//       c[index].quantity = Math.max(1, c[index].quantity + delta);
+//       return c;
+//     });
+//   };
+
+//   const setQuantity = (index: number, q: number) => {
+//     if (q <= 0) return;
+//     setCart(prev => {
+//       const c = [...prev];
+//       c[index].quantity = q;
+//       return c;
+//     });
+//   };
+
+//   const updateCartItemDimensions = (i: number, w: number, h: number) => {
+//     setCart(prev => {
+//       const c = [...prev];
+//       const item = c[i];
+//       if (item.pricingMethod === 'area') {
+//         const area = w * h;
+//         const base = item.price * area;
+//         const services = item.selectedServices.reduce(
+//           (s, sv) => s + sv.price * area,
+//           0
+//         );
+//         c[i] = {
+//           ...item,
+//           dimensions: { width: w, height: h },
+//           finalPrice: base + services,
+//         };
+//       }
+//       return c;
+//     });
+//   };
+
+//   const toggleServiceForCartItem = (i: number, s: Service) => {
+//     setCart(prev => {
+//       const c = [...prev];
+//       const item = c[i];
+//       const exists = item.selectedServices.find(x => x.id === s.id);
+//       const services = exists
+//         ? item.selectedServices.filter(x => x.id !== s.id)
+//         : [...item.selectedServices, s];
+
+//       const area =
+//         item.pricingMethod === 'area' && item.dimensions
+//           ? item.dimensions.width * item.dimensions.height
+//           : 1;
+
+//       const base =
+//         item.pricingMethod === 'area' ? item.price * area : item.price;
+
+//       const servicesTotal = services.reduce(
+//         (sum, sv) =>
+//           sum +
+//           (item.pricingMethod === 'area' ? sv.price * area : sv.price),
+//         0
+//       );
+
+//       c[i] = {
+//         ...item,
+//         selectedServices: services,
+//         finalPrice: base + servicesTotal,
+//       };
+//       return c;
+//     });
+//   };
+
+//   const clearCart = () => setCart([]);
+
+//   const totalAmount = cart.reduce(
+//     (s, i) => s + i.finalPrice * i.quantity,
+//     0
+//   );
+
+//   /* ===========================
+//      Transactions + Payments
+//   =========================== */
+
+//   const completeTransaction = (
+//     method: PaymentMethod,
+//     customer?: Customer,
+//     paidAmount?: number
+//   ) => {
+//     if (cart.length === 0) return;
+
+//     const id = Date.now().toString();
+//     const date = new Date().toISOString();
+
+//     const transaction: Transaction = {
+//       id,
+//       type: 'sale',
+//       date,
+//       items: [...cart],
+//       itemsCount: cart.reduce((a, i) => a + i.quantity, 0),
+//       total: totalAmount,
+//       paymentMethod: method,
+//       customerId: customer?.id,
+//       customerName: customer?.name,
+//       payments: [],
+//       isPaid: method !== 'credit',
+//     };
+
+//     if (method === 'credit') {
+//       if (paidAmount && paidAmount > 0) {
+//         transaction.payments.push({
+//           id: id + '_p1',
+//           amount: paidAmount,
+//           date,
+//           method: 'cash',
+//         });
+//       }
+//     } else {
+//       transaction.payments.push({
+//         id: id + '_full',
+//         amount: totalAmount,
+//         date,
+//         method,
+//       });
+//     }
+
+//     setTransactions(prev => [...prev, transaction]);
+
+//     if (isConfigured && supabase) {
+//       supabase.from('transactions').insert(sanitize(transaction));
+//     }
+
+//     clearCart();
+//     return transaction;
+//   };
+
+//   const addPaymentToTransaction = (
+//     transactionId: string,
+//     amount: number,
+//     method: PaymentMethod
+//   ) => {
+//     setTransactions(prev =>
+//       prev.map(t => {
+//         if (t.id !== transactionId) return t;
+
+//         const payment: PaymentRecord = {
+//           id: Date.now().toString(),
+//           amount,
+//           date: new Date().toISOString(),
+//           method,
+//         };
+
+//         const payments = [...(t.payments || []), payment];
+//         const paid = payments.reduce((s, p) => s + p.amount, 0);
+
+//         const updated = {
+//           ...t,
+//           payments,
+//           isPaid: paid >= t.total - 0.01,
+//         };
+
+//         if (isConfigured && supabase) {
+//           supabase.from('transactions').update(sanitize(updated)).eq('id', t.id);
+//         }
+
+//         return updated;
+//       })
+//     );
+//   };
+
+//   const collectDebtFromCustomer = (
+//     customerId: string,
+//     amount: number,
+//     method: PaymentMethod
+//   ) => {
+//     let remaining = amount;
+
+//     const sorted = transactions
+//       .filter(
+//         t =>
+//           t.customerId === customerId &&
+//           !t.isPaid &&
+//           t.paymentMethod === 'credit'
+//       )
+//       .sort((a, b) => +new Date(a.date) - +new Date(b.date));
+
+//     sorted.forEach(t => {
+//       if (remaining <= 0) return;
+//       const paid = t.payments?.reduce((s, p) => s + p.amount, 0) || 0;
+//       const debt = t.total - paid;
+//       const pay = Math.min(debt, remaining);
+//       addPaymentToTransaction(t.id, pay, method);
+//       remaining -= pay;
+//     });
+//   };
+
+//   const deleteTransaction = (id: string) => {
+//     setTransactions(prev => prev.filter(t => t.id !== id));
+//     if (isConfigured && supabase) {
+//       supabase.from('transactions').delete().eq('id', id);
+//     }
+//   };
+
+//   /* ===========================
+//      Auth
+//   =========================== */
+
+//   const login = (u: string, p: string) => {
+//     const user = users.find(
+//       x => x.username.toLowerCase() === u.toLowerCase() && x.pin === p
+//     );
+//     if (!user) return false;
+//     setCurrentUser(user);
+//     setView(ViewState.POS);
+//     return true;
+//   };
+
+//   const logout = () => {
+//     setCurrentUser(null);
+//     setView(ViewState.LOGIN);
+//   };
+
+//   const hasPermission = (perm: Permission) => {
+//     if (!currentUser) return false;
+//     if (currentUser.role === 'admin') return true;
+//     return currentUser.permissions.includes(perm);
+//   };
+
+//   const t = (key: string, params?: any) => {
+//     const lang = appSettings.language || 'ar';
+//     const text =
+//       translations[lang]?.[key as TranslationKey] ??
+//       translations.ar[key as TranslationKey] ??
+//       key;
+//     if (!params) return text;
+//     return Object.keys(params).reduce(
+//       (s, k) => s.replace(`{${k}}`, params[k]),
+//       text
+//     );
+//   };
+
+//   return (
+//     <POSContext.Provider
+//       value={{
+//         products,
+//         categories,
+//         cart,
+//         transactions,
+//         customers,
+//         expenses,
+//         machines,
+//         machineReadings,
+//         users,
+//         suppliers,
+//         currentUser,
+//         currentView,
+//         setView,
+//         addToCart,
+//         removeFromCart,
+//         updateQuantity,
+//         setQuantity,
+//         updateCartItemDimensions,
+//         toggleServiceForCartItem,
+//         clearCart,
+//         completeTransaction,
+//         addPaymentToTransaction,
+//         collectDebtFromCustomer,
+//         deleteTransaction,
+//         login,
+//         logout,
+//         hasPermission,
+//         totalAmount,
+//         receiptSettings,
+//         appSettings,
+//         aiSettings,
+//         t,
+//         serverStatus,
+//         connectionError,
+//       }}
+//     >
+//       {children}
+//     </POSContext.Provider>
+//   );
+// };
+
+// /* ===========================
+//    Hook
+// =========================== */
+
+// export const usePOS = () => {
+//   const ctx = useContext(POSContext);
+//   if (!ctx) throw new Error('usePOS must be used within POSProvider');
+//   return ctx;
+// };

@@ -1,312 +1,3 @@
-// import React, { useState } from 'react';
-// import {
-//   Trash2, ShoppingCart, Plus, Minus, Coffee, Banknote, Smartphone,
-//   CreditCard, User, Search, X, Settings, Ruler, Save, Printer,
-//   DollarSign, ChevronDown
-// } from 'lucide-react';
-
-// import { usePOS } from '../context/POSContext';
-// import { PaymentMethod, Customer } from '../types';
-// import { createTransaction } from '../services/transactions.service';
-
-// interface CartSidebarProps {
-//   onClose?: () => void;
-// }
-
-// const CartSidebar: React.FC<CartSidebarProps> = ({ onClose }) => {
-//   const {
-//     cart,
-//     removeFromCart,
-//     updateQuantity,
-//     setQuantity,
-//     updateCartItemDimensions,
-//     toggleServiceForCartItem,
-//     totalAmount,
-//     customers,
-//     addCustomer,
-//     printReceipt,
-//     t
-//   } = usePOS();
-
-//   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-//   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-//   const [customerSearch, setCustomerSearch] = useState('');
-//   const [downPayment, setDownPayment] = useState('');
-
-//   const filteredCustomers = customers.filter(
-//     c =>
-//       c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-//       c.phone.includes(customerSearch)
-//   );
-
-//   const handleProcessTransaction = async (shouldPrint: boolean) => {
-//     if (cart.length === 0) return;
-
-//     try {
-//       let finalCustomer: Customer | undefined;
-
-//       if (selectedCustomerId) {
-//         finalCustomer = customers.find(c => c.id === selectedCustomerId);
-//       } else if (customerSearch.trim()) {
-//         finalCustomer = addCustomer({ name: customerSearch, phone: '' });
-//       }
-
-//       if (paymentMethod === 'credit' && !finalCustomer) {
-//         alert(t('selectCustomer'));
-//         return;
-//       }
-
-//       const payload = {
-//   id: Date.now().toString(),          // لأن id عندك text
-//   itemsCount: cart.reduce((sum, i) => sum + i.quantity, 0),
-//   total: totalAmount,
-//   paymentMethod,
-
-//   // أهم سطرين 👇
-//   customerId: finalCustomer?.id ?? null,
-//   customerName: finalCustomer?.name ?? 'ضيف',
-
-//   items: cart,
-
-//   payments:
-//     paymentMethod === 'credit'
-//       ? [
-//           {
-//             method: 'down_payment',
-//             amount: parseFloat(downPayment) || 0
-//           }
-//         ]
-//       : [
-//           {
-//             method: paymentMethod,
-//             amount: totalAmount
-//           }
-//         ],
-
-//   isPaid: paymentMethod !== 'credit',
-//   type: 'sale'
-// };
-
-//       const savedTransaction = await createTransaction(payload);
-
-//       if (shouldPrint) {
-//         printReceipt(savedTransaction);
-//       }
-
-//       // Reset
-//       setSelectedCustomerId('');
-//       setCustomerSearch('');
-//       setPaymentMethod('cash');
-//       setDownPayment('');
-
-//       if (onClose) onClose();
-
-//       alert('تم حفظ العملية بنجاح');
-
-//     } catch (error) {
-//       console.error('Transaction Error:', error);
-//       alert('حصل خطأ أثناء حفظ العملية');
-//     }
-//   };
-
-//   const remainingDebt = totalAmount - (parseFloat(downPayment) || 0);
-
-//   return (
-//     <div className="w-full md:w-[400px] bg-card dark:bg-gray-800 h-full flex flex-col shadow-xl z-30 border-r border-gray-100 dark:border-gray-700 relative">
-      
-//       {/* Header */}
-//       <div className="p-4 md:p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start bg-gray-50 dark:bg-gray-900/50">
-//         <div>
-//           <div className="flex items-center gap-2 mb-1">
-//             <h2 className="text-lg md:text-xl font-bold text-gray-800 dark:text-white">
-//               {t('newInvoice')}
-//             </h2>
-//             <span className="bg-red-100 dark:bg-red-900/50 text-primary px-2 py-0.5 rounded-full text-xs font-bold">
-//               {cart.reduce((a, i) => a + i.quantity, 0)} {t('item')}
-//             </span>
-//           </div>
-//           <div className="text-xs text-gray-400">
-//             #{Date.now().toString().slice(-6)}
-//           </div>
-//         </div>
-
-//         {onClose && (
-//           <button
-//             onClick={onClose}
-//             className="md:hidden p-2 bg-gray-200 dark:bg-gray-700 rounded-full"
-//           >
-//             <ChevronDown size={24} />
-//           </button>
-//         )}
-//       </div>
-
-//       {/* Cart Items */}
-//       <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50/50 dark:bg-gray-900/20">
-//         {cart.length === 0 ? (
-//           <div className="h-full flex flex-col items-center justify-center text-gray-300">
-//             <ShoppingCart size={48} className="mb-4 opacity-50" />
-//             <p>{t('emptyCart')}</p>
-//             <p className="text-sm">{t('addItems')}</p>
-//           </div>
-//         ) : (
-//           cart.map((item, index) => (
-//             <div
-//               key={`${item.id}-${index}`}
-//               className="flex flex-col gap-2 p-3 rounded-xl bg-white dark:bg-gray-800 border shadow-sm"
-//             >
-//               <div className="flex items-start gap-3">
-//                 <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-//                   <Coffee size={18} />
-//                 </div>
-
-//                 <div className="flex-1">
-//                   <h4 className="font-bold text-sm">{item.name}</h4>
-//                   <div className="text-xs text-gray-500">
-//                     {item.price.toFixed(2)}
-//                   </div>
-//                 </div>
-
-//                 <div className="flex flex-col items-end gap-2">
-//                   <div className="font-bold text-primary">
-//                     {(item.finalPrice * item.quantity).toFixed(2)}
-//                   </div>
-
-//                   <div className="flex items-center gap-1">
-//                     <button onClick={() => updateQuantity(index, -1)}>
-//                       <Minus size={14} />
-//                     </button>
-
-//                     <input
-//                       type="number"
-//                       value={item.quantity}
-//                       className="w-8 text-center"
-//                       onChange={e =>
-//                         setQuantity(index, parseInt(e.target.value) || 1)
-//                       }
-//                     />
-
-//                     <button onClick={() => updateQuantity(index, 1)}>
-//                       <Plus size={14} />
-//                     </button>
-
-//                     <button onClick={() => removeFromCart(item.id, index)}>
-//                       <Trash2 size={16} />
-//                     </button>
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {item.pricingMethod === 'area' && item.dimensions && (
-//                 <div className="flex gap-2">
-//                   <Ruler size={14} />
-//                   <input
-//                     type="number"
-//                     value={item.dimensions.width}
-//                     onChange={e =>
-//                       updateCartItemDimensions(
-//                         index,
-//                         parseFloat(e.target.value),
-//                         item.dimensions.height
-//                       )
-//                     }
-//                   />
-//                   ×
-//                   <input
-//                     type="number"
-//                     value={item.dimensions.height}
-//                     onChange={e =>
-//                       updateCartItemDimensions(
-//                         index,
-//                         item.dimensions.width,
-//                         parseFloat(e.target.value)
-//                       )
-//                     }
-//                   />
-//                 </div>
-//               )}
-
-//               {item.services && item.services.length > 0 && (
-//                 <div className="pt-2 border-t">
-//                   {item.services.map(service => (
-//                     <button
-//                       key={service.id}
-//                       onClick={() =>
-//                         toggleServiceForCartItem(index, service)
-//                       }
-//                       className="text-xs px-2 py-1 border rounded mr-1"
-//                     >
-//                       {service.name} ({service.price})
-//                     </button>
-//                   ))}
-//                 </div>
-//               )}
-//             </div>
-//           ))
-//         )}
-//       </div>
-
-//       {/* Footer */}
-//       <div className="p-4 border-t bg-white dark:bg-gray-800">
-//         <div className="mb-4">
-//           <label className="text-xs font-bold">{t('paymentMethod')}</label>
-//           <div className="grid grid-cols-3 gap-2 mt-2">
-//             <button onClick={() => setPaymentMethod('cash')}>
-//               <Banknote size={18} />
-//             </button>
-//             <button onClick={() => setPaymentMethod('vodafone_cash')}>
-//               <Smartphone size={18} />
-//             </button>
-//             <button onClick={() => setPaymentMethod('credit')}>
-//               <CreditCard size={18} />
-//             </button>
-//           </div>
-//         </div>
-
-//         {paymentMethod === 'credit' && (
-//           <div className="mb-3">
-//             <input
-//               type="number"
-//               value={downPayment}
-//               onChange={e => setDownPayment(e.target.value)}
-//               placeholder={t('downPayment')}
-//               className="w-full border p-2 rounded"
-//             />
-//             <div className="text-xs text-red-500">
-//               {t('remaining')}: {remainingDebt.toFixed(2)}
-//             </div>
-//           </div>
-//         )}
-
-//         <div className="flex justify-between text-xl font-bold mb-4">
-//           <span>{t('total')}</span>
-//           <span className="text-primary">{totalAmount.toFixed(2)}</span>
-//         </div>
-
-//         <div className="grid grid-cols-2 gap-3">
-//           <button
-//             onClick={() => handleProcessTransaction(false)}
-//             className="bg-gray-800 text-white py-3 rounded-xl flex items-center justify-center gap-2"
-//           >
-//             <Save size={18} /> {t('saveOnly')}
-//           </button>
-
-//           <button
-//             onClick={() => handleProcessTransaction(true)}
-//             className="bg-primary text-white py-3 rounded-xl flex items-center justify-center gap-2"
-//           >
-//             <Printer size={18} /> {t('saveAndPrint')}
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default CartSidebar;
-
-
-
-
 import React, { useState } from 'react';
 import {
   Trash2,
@@ -330,31 +21,40 @@ import {
 
 import { usePOS } from '../context/POSContext';
 import { PaymentMethod, Customer } from '../types';
-import { createTransaction } from '../services/transactions.service';
+// import { createTransaction } from '../services/transactions.service';
 
 interface CartSidebarProps {
   onClose?: () => void;
 }
 
 const CartSidebar: React.FC<CartSidebarProps> = ({ onClose }) => {
-  const {
-    cart,
-    removeFromCart,
-    updateQuantity,
-    setQuantity,
-    updateCartItemDimensions,
-    toggleServiceForCartItem,
-    totalAmount,
-    customers,
-    addCustomer,
-    printReceipt,
-    t
-  } = usePOS();
+
+const {
+  cart,
+  removeFromCart,
+  updateQuantity,
+  setQuantity,
+  updateCartItemDimensions,
+  toggleServiceForCartItem,
+  totalAmount,
+  customers,
+  addCustomer,
+  printReceipt,
+  completeTransaction,
+  t
+} = usePOS();
+
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [downPayment, setDownPayment] = useState('');
+const [isSaving, setIsSaving] = useState(false);
+
+  const [toast, setToast] = useState<{
+  type: 'success' | 'error';
+  message: string;
+} | null>(null);
 
   const filteredCustomers = customers.filter(
     c =>
@@ -362,81 +62,273 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ onClose }) => {
       c.phone.includes(customerSearch)
   );
 
+  //   if (cart.length === 0) return;
+
+  //   try {
+  //     let finalCustomer: Customer | undefined;
+
+  //     if (selectedCustomerId) {
+  //       finalCustomer = customers.find(c => c.id === selectedCustomerId);
+  //     } else if (customerSearch.trim()) {
+  //       finalCustomer = addCustomer({
+  //         name: customerSearch,
+  //         phone: ''
+  //       });
+  //     }
+
+  //     if (paymentMethod === 'credit' && !finalCustomer) {
+  //       alert(t('selectCustomer'));
+  //       return;
+  //     }
+
+  //     const payload = {
+  //       id: Date.now().toString(), // لأن id عندك text
+  //       itemsCount: cart.reduce((sum, i) => sum + i.quantity, 0),
+  //       total: totalAmount,
+  //       paymentMethod,
+
+  //       // ربط الفاتورة بالعميل
+  //       customerId: finalCustomer?.id ?? null,
+  //       customerName: finalCustomer?.name ?? 'ضيف',
+
+  //       items: cart,
+
+  //       payments:
+  //         paymentMethod === 'credit'
+  //           ? [
+  //               {
+  //                 method: 'down_payment',
+  //                 amount: parseFloat(downPayment) || 0
+  //               }
+  //             ]
+  //           : [
+  //               {
+  //                 method: paymentMethod,
+  //                 amount: totalAmount
+  //               }
+  //             ],
+
+  //       isPaid: paymentMethod !== 'credit',
+  //       type: 'sale'
+  //     };
+
+  //     const savedTransaction = await createTransaction(payload);
+
+  //     if (shouldPrint) {
+  //       printReceipt(savedTransaction);
+  //     }
+
+  //     // Reset
+  //     setSelectedCustomerId('');
+  //     setCustomerSearch('');
+  //     setPaymentMethod('cash');
+  //     setDownPayment('');
+
+  //     if (onClose) onClose();
+
+  //     alert('تم حفظ العملية بنجاح');
+  //   } catch (error) {
+  //     console.error('Transaction Error:', error);
+  //     alert('حصل خطأ أثناء حفظ العملية');
+  //   }
+  // };
+
+//   const handleProcessTransaction = async (shouldPrint: boolean) => {
+//   if (cart.length === 0) return;
+
+//   let finalCustomer: Customer | undefined;
+
+//   if (selectedCustomerId) {
+//     finalCustomer = customers.find(c => c.id === selectedCustomerId);
+//   } else if (customerSearch.trim()) {
+//     finalCustomer = addCustomer({
+//       name: customerSearch,
+//       phone: ''
+//     });
+//   }
+
+//   if (paymentMethod === 'credit' && !finalCustomer) {
+//     alert(t('selectCustomer'));
+//     return;
+//   }
+
+//   const transaction = completeTransaction(
+//     paymentMethod,
+//     finalCustomer,
+//     paymentMethod === 'credit' ? parseFloat(downPayment) || 0 : undefined
+//   );
+
+//   if (!transaction) return;
+
+//   if (shouldPrint) {
+//     await printReceipt(transaction);
+//   }
+
+//   // Reset UI فقط
+//   setSelectedCustomerId('');
+//   setCustomerSearch('');
+//   setPaymentMethod('cash');
+//   setDownPayment('');
+
+//   if (onClose) onClose();
+  // };
+  
+
+//   const handleProcessTransaction = async (shouldPrint: boolean) => {
+//   if (cart.length === 0) return;
+
+//   try {
+//     let finalCustomer: Customer | undefined;
+
+//     if (selectedCustomerId) {
+//       finalCustomer = customers.find(c => c.id === selectedCustomerId);
+//     } else if (customerSearch.trim()) {
+//       finalCustomer = addCustomer({
+//         name: customerSearch,
+//         phone: ''
+//       });
+//     }
+
+//     if (paymentMethod === 'credit' && !finalCustomer) {
+//       setToast({
+//         type: 'error',
+//         message: t('selectCustomer')
+//       });
+//       setTimeout(() => setToast(null), 3000);
+//       return;
+//     }
+
+//     const transaction = completeTransaction(
+//       paymentMethod,
+//       finalCustomer,
+//       paymentMethod === 'credit'
+//         ? parseFloat(downPayment) || 0
+//         : undefined
+//     );
+
+//     if (!transaction) {
+//       throw new Error('Transaction not created');
+//     }
+
+//     if (shouldPrint) {
+//       await printReceipt(transaction);
+//     }
+
+//     // ✅ Success Popup
+//     setToast({
+//       type: 'success',
+//       message: 'تم حفظ العملية بنجاح'
+//     });
+
+//     // 🧼 Reset UI
+//     setSelectedCustomerId('');
+//     setCustomerSearch('');
+//     setPaymentMethod('cash');
+//     setDownPayment('');
+
+//     if (onClose) onClose();
+
+//     // ⏱️ إخفاء البوب
+//     setTimeout(() => setToast(null), 3000);
+
+//   } catch (error) {
+//     console.error('Transaction Error:', error);
+
+//     // ❌ Error Popup
+//     setToast({
+//       type: 'error',
+//       message: 'فشل حفظ العملية، حاول مرة أخرى'
+//     });
+
+//     setTimeout(() => setToast(null), 3000);
+//   }
+  // };
+  
   const handleProcessTransaction = async (shouldPrint: boolean) => {
-    if (cart.length === 0) return;
+  if (cart.length === 0 || isSaving) return;
 
-    try {
-      let finalCustomer: Customer | undefined;
+  try {
+    setIsSaving(true);
 
-      if (selectedCustomerId) {
-        finalCustomer = customers.find(c => c.id === selectedCustomerId);
-      } else if (customerSearch.trim()) {
-        finalCustomer = addCustomer({
-          name: customerSearch,
-          phone: ''
-        });
-      }
+let finalCustomer: Customer | undefined;
 
-      if (paymentMethod === 'credit' && !finalCustomer) {
-        alert(t('selectCustomer'));
-        return;
-      }
+if (selectedCustomerId) {
+  finalCustomer = customers.find(c => c.id === selectedCustomerId);
+} else if (customerSearch.trim()) {
+  finalCustomer = addCustomer({
+    name: customerSearch,
+    phone: ''
+  });
+}
 
-      const payload = {
-        id: Date.now().toString(), // لأن id عندك text
-        itemsCount: cart.reduce((sum, i) => sum + i.quantity, 0),
-        total: totalAmount,
-        paymentMethod,
+// ⛔ منع الحفظ بدون عميل (كاش أو آجل)
+if (!finalCustomer) {
+  // errorSound.play();
+  setToast({
+    type: 'error',
+    message: 'اختار عميل قبل حفظ العملية'
+  });
+  setIsSaving(false);
+  return;
+}
 
-        // ربط الفاتورة بالعميل
-        customerId: finalCustomer?.id ?? null,
-        customerName: finalCustomer?.name ?? 'ضيف',
 
-        items: cart,
 
-        payments:
-          paymentMethod === 'credit'
-            ? [
-                {
-                  method: 'down_payment',
-                  amount: parseFloat(downPayment) || 0
-                }
-              ]
-            : [
-                {
-                  method: paymentMethod,
-                  amount: totalAmount
-                }
-              ],
+    const transaction = completeTransaction(
+      paymentMethod,
+      finalCustomer,
+      paymentMethod === 'credit'
+        ? parseFloat(downPayment) || 0
+        : undefined
+    );
 
-        isPaid: paymentMethod !== 'credit',
-        type: 'sale'
-      };
-
-      const savedTransaction = await createTransaction(payload);
-
-      if (shouldPrint) {
-        printReceipt(savedTransaction);
-      }
-
-      // Reset
-      setSelectedCustomerId('');
-      setCustomerSearch('');
-      setPaymentMethod('cash');
-      setDownPayment('');
-
-      if (onClose) onClose();
-
-      alert('تم حفظ العملية بنجاح');
-    } catch (error) {
-      console.error('Transaction Error:', error);
-      alert('حصل خطأ أثناء حفظ العملية');
+    if (!transaction) {
+      throw new Error('Transaction failed');
     }
-  };
+
+    if (shouldPrint) {
+      await printReceipt(transaction);
+    }
+
+    // successSound.play();
+    setToast({ type: 'success', message: 'تم حفظ العملية بنجاح' });
+
+    // 🧼 Reset UI
+    setSelectedCustomerId('');
+    setCustomerSearch('');
+    setPaymentMethod('cash');
+    setDownPayment('');
+
+    if (onClose) onClose();
+
+    setTimeout(() => setToast(null), 3000);
+  } catch (err) {
+    console.error(err);
+    // errorSound.play();
+    setToast({ type: 'error', message: 'فشل حفظ العملية' });
+    setTimeout(() => setToast(null), 3000);
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+
 
   const remainingDebt = totalAmount - (parseFloat(downPayment) || 0);
 
   return (
+  <>
+{toast && (
+  <div
+    className={`fixed top-8 left-1/2 -translate-x-1/2 
+      z-[9999] px-6 py-3 rounded-xl shadow-lg text-white text-sm font-bold
+      transition-all duration-200
+      ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}
+    `}
+  >
+    {toast.message}
+  </div>
+)}
     <div className="w-full md:w-[400px] bg-card dark:bg-gray-800 h-full flex flex-col shadow-xl z-30 border-r border-gray-100 dark:border-gray-700 relative">
       
       {/* Header */}
@@ -546,9 +438,39 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ onClose }) => {
         <div className="mb-3">
           <label className="text-xs font-bold">{t('paymentMethod')}</label>
           <div className="grid grid-cols-3 gap-2 mt-2">
-            <button onClick={() => setPaymentMethod('cash')}><Banknote size={18} /></button>
-            <button onClick={() => setPaymentMethod('vodafone_cash')}><Smartphone size={18} /></button>
-            <button onClick={() => setPaymentMethod('credit')}><CreditCard size={18} /></button>
+            <button
+  onClick={() => setPaymentMethod('cash')}
+  className={`p-3 rounded-lg border flex justify-center ${
+    paymentMethod === 'cash'
+      ? 'border-green-500 bg-green-50 text-green-700'
+      : 'border-gray-200'
+  }`}
+>
+  <Banknote size={18} />
+</button>
+
+<button
+  onClick={() => setPaymentMethod('vodafone_cash')}
+  className={`p-3 rounded-lg border flex justify-center ${
+    paymentMethod === 'vodafone_cash'
+      ? 'border-green-500 bg-green-50 text-green-700'
+      : 'border-gray-200'
+  }`}
+>
+  <Smartphone size={18} />
+</button>
+
+<button
+  onClick={() => setPaymentMethod('credit')}
+  className={`p-3 rounded-lg border flex justify-center ${
+    paymentMethod === 'credit'
+      ? 'border-green-500 bg-green-50 text-green-700'
+      : 'border-gray-200'
+  }`}
+>
+  <CreditCard size={18} />
+</button>
+
           </div>
         </div>
 
@@ -583,7 +505,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ onClose }) => {
               placeholder={t('searchCustomer')}
             />
 
-            {customerSearch && (
+            {customerSearch && !selectedCustomerId && (
               <div className="absolute bottom-full mb-1 w-full bg-white border rounded-lg shadow max-h-40 overflow-y-auto z-20">
                 {filteredCustomers.length > 0 ? (
                   filteredCustomers.map(c => (
@@ -606,6 +528,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ onClose }) => {
                       const newCustomer = addCustomer({ name: customerSearch, phone: '' });
                       setSelectedCustomerId(newCustomer.id);
                       setCustomerSearch(newCustomer.name);
+
+                       setTimeout(() => setCustomerSearch(newCustomer.name), 0);
                     }}
                   >
                     إضافة عميل جديد: {customerSearch}
@@ -622,16 +546,27 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ onClose }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => handleProcessTransaction(false)} className="bg-gray-800 text-white py-3 rounded-xl flex gap-2 justify-center">
+          {/* <button onClick={() => handleProcessTransaction(false)} className="bg-gray-800 text-white py-3 rounded-xl flex gap-2 justify-center">
             <Save size={18} /> {t('saveOnly')}
-          </button>
+          </button> */}
+            <button
+  onClick={() => handleProcessTransaction(false)}
+  disabled={isSaving}
+  className={`py-3 rounded-xl flex gap-2 justify-center items-center
+    ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-800 text-white'}
+  `}
+>
+  {isSaving ? 'جاري الحفظ...' : <><Save size={18} /> {t('saveOnly')}</>}
+</button>
+
 
           <button onClick={() => handleProcessTransaction(true)} className="bg-primary text-white py-3 rounded-xl flex gap-2 justify-center">
             <Printer size={18} /> {t('saveAndPrint')}
           </button>
         </div>
       </div>
-    </div>
+      </div>
+      </>
   );
 };
 
