@@ -28,6 +28,17 @@ import { translations, TranslationKey } from '../translations';
 import QRCode from 'qrcode';
 import { supabase, isConfigured } from '../supabaseConfig';
 
+
+const normalizeTransaction = (row: any): Transaction => {
+  if (!row) return row;
+  // خليه دايمًا يملك id عشان باقي الكود يشتغل
+  return {
+    ...row,
+    id: row.id ?? row.id_uuid,   // ✅ هنا السر
+  } as Transaction;
+};
+
+
 // --- Helper: Safe JSON Stringify ---
 const safeStringify = (obj: any): string => {
     try {
@@ -100,7 +111,9 @@ setSelectedCustomer: (customer: Customer | null) => void;
   toggleServiceForCartItem: (cartIndex: number, service: Service) => void;
   clearCart: () => void;
   
-  completeTransaction: (method: PaymentMethod, customer?: Customer, paidAmount?: number) => Transaction | undefined;
+    // completeTransaction: (method: PaymentMethod, customer?: Customer, paidAmount?: number) => Transaction | undefined;
+    completeTransaction: (method: PaymentMethod, customer: Customer, paidAmount?: number) => Promise<Transaction>;
+
   markTransactionAsPaid: (transactionId: string) => void;
   addPaymentToTransaction: (transactionId: string, amount: number, method: PaymentMethod) => void;
   collectDebtFromCustomer: (customerId: string, amount: number, method: PaymentMethod) => void;
@@ -257,7 +270,18 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             }
         };
         fetchCategories();
-        fetchData('transactions', setTransactions);
+        // fetchData('transactions', setTransactions);
+        const fetchTransactions = async () => {
+  const { data, error } = await supabase.from('transactions').select('*');
+  if (error) {
+    console.error('Error fetching transactions:', error);
+    setConnectionError(error.message);
+  } else if (data) {
+    setTransactions(data.map(normalizeTransaction));
+  }
+};
+fetchTransactions();
+
         fetchData('customers', setCustomers);
         fetchData('expenses', setExpenses);
         fetchData('machines', setMachines);
@@ -311,7 +335,29 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
                 switch(table) {
                     case 'products': updateState(setProducts); break;
-                    case 'transactions': updateState(setTransactions); break;
+                    // case 'transactions': updateState(setTransactions); break;
+                    case 'transactions': {
+  // استخدم id_uuid كـ identity أو normalize
+  const normalizedNew = normalizeTransaction(newRow);
+  const normalizedOld = normalizeTransaction(oldRow);
+
+  setTransactions((prev) => {
+    if (eventType === 'INSERT') {
+      const exists = prev.some(t => (t.id ?? (t as any).id_uuid) === normalizedNew.id);
+      if (exists) return prev;
+      return [...prev, normalizedNew];
+    }
+    if (eventType === 'UPDATE') {
+      return prev.map(t => (t.id === normalizedNew.id ? normalizedNew : t));
+    }
+    if (eventType === 'DELETE') {
+      return prev.filter(t => t.id !== normalizedOld.id);
+    }
+    return prev;
+  });
+  break;
+}
+
                     case 'customers': updateState(setCustomers); break;
                     case 'expenses': updateState(setExpenses); break;
                     case 'machines': updateState(setMachines); break;
@@ -508,48 +554,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const totalAmount = cart.reduce((sum, item) => sum + (item.finalPrice * item.quantity), 0);
 
-//   // --- Transactions ---
-//   const completeTransaction = (method: PaymentMethod, customer?: Customer, paidAmount?: number) => {
-//     const transaction: Transaction = {
-//       id: Date.now().toString(),
-//       type: 'sale',
-//       itemsCount: cart.reduce((acc, item) => acc + item.quantity, 0),
-//       total: totalAmount,
-//       date: new Date().toISOString(),
-//       paymentMethod: method,
-//       customerId: customer?.id,
-//       customerName: customer?.name,
-//       items: [...cart],
-//       isPaid: method !== 'credit',
-//       payments: []
-//     };
-
-//     if (method === 'credit') {
-//         if (paidAmount && paidAmount > 0) {
-//             transaction.payments = [{
-//                 id: Date.now().toString() + '_init',
-//                 amount: paidAmount,
-//                 date: transaction.date,
-//                 method: 'cash' 
-//             }];
-//         }
-//     } else {
-//         transaction.payments = [{
-//             id: Date.now().toString() + '_full',
-//             amount: totalAmount,
-//             date: transaction.date,
-//             method: method
-//         }];
-//     }
-
-//     setTransactions(prev => [...prev, transaction]);
-//     dbWrite('transactions', 'insert', transaction);
-    
-//     clearCart();
-// setSelectedCustomer(null); // ← تصفير العميل
-// return transaction;
-
-    //   };
+   // --- Transactions ---
     
     // ✅ REPLACE WITH THIS
 const completeTransaction = async (

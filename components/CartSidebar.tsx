@@ -62,188 +62,6 @@ const [isSaving, setIsSaving] = useState(false);
       c.phone.includes(customerSearch)
   );
 
-  //   if (cart.length === 0) return;
-
-  //   try {
-  //     let finalCustomer: Customer | undefined;
-
-  //     if (selectedCustomerId) {
-  //       finalCustomer = customers.find(c => c.id === selectedCustomerId);
-  //     } else if (customerSearch.trim()) {
-  //       finalCustomer = addCustomer({
-  //         name: customerSearch,
-  //         phone: ''
-  //       });
-  //     }
-
-  //     if (paymentMethod === 'credit' && !finalCustomer) {
-  //       alert(t('selectCustomer'));
-  //       return;
-  //     }
-
-  //     const payload = {
-  //       id: Date.now().toString(), // لأن id عندك text
-  //       itemsCount: cart.reduce((sum, i) => sum + i.quantity, 0),
-  //       total: totalAmount,
-  //       paymentMethod,
-
-  //       // ربط الفاتورة بالعميل
-  //       customerId: finalCustomer?.id ?? null,
-  //       customerName: finalCustomer?.name ?? 'ضيف',
-
-  //       items: cart,
-
-  //       payments:
-  //         paymentMethod === 'credit'
-  //           ? [
-  //               {
-  //                 method: 'down_payment',
-  //                 amount: parseFloat(downPayment) || 0
-  //               }
-  //             ]
-  //           : [
-  //               {
-  //                 method: paymentMethod,
-  //                 amount: totalAmount
-  //               }
-  //             ],
-
-  //       isPaid: paymentMethod !== 'credit',
-  //       type: 'sale'
-  //     };
-
-  //     const savedTransaction = await createTransaction(payload);
-
-  //     if (shouldPrint) {
-  //       printReceipt(savedTransaction);
-  //     }
-
-  //     // Reset
-  //     setSelectedCustomerId('');
-  //     setCustomerSearch('');
-  //     setPaymentMethod('cash');
-  //     setDownPayment('');
-
-  //     if (onClose) onClose();
-
-  //     alert('تم حفظ العملية بنجاح');
-  //   } catch (error) {
-  //     console.error('Transaction Error:', error);
-  //     alert('حصل خطأ أثناء حفظ العملية');
-  //   }
-  // };
-
-//   const handleProcessTransaction = async (shouldPrint: boolean) => {
-//   if (cart.length === 0) return;
-
-//   let finalCustomer: Customer | undefined;
-
-//   if (selectedCustomerId) {
-//     finalCustomer = customers.find(c => c.id === selectedCustomerId);
-//   } else if (customerSearch.trim()) {
-//     finalCustomer = addCustomer({
-//       name: customerSearch,
-//       phone: ''
-//     });
-//   }
-
-//   if (paymentMethod === 'credit' && !finalCustomer) {
-//     alert(t('selectCustomer'));
-//     return;
-//   }
-
-//   const transaction = completeTransaction(
-//     paymentMethod,
-//     finalCustomer,
-//     paymentMethod === 'credit' ? parseFloat(downPayment) || 0 : undefined
-//   );
-
-//   if (!transaction) return;
-
-//   if (shouldPrint) {
-//     await printReceipt(transaction);
-//   }
-
-//   // Reset UI فقط
-//   setSelectedCustomerId('');
-//   setCustomerSearch('');
-//   setPaymentMethod('cash');
-//   setDownPayment('');
-
-//   if (onClose) onClose();
-  // };
-  
-
-//   const handleProcessTransaction = async (shouldPrint: boolean) => {
-//   if (cart.length === 0) return;
-
-//   try {
-//     let finalCustomer: Customer | undefined;
-
-//     if (selectedCustomerId) {
-//       finalCustomer = customers.find(c => c.id === selectedCustomerId);
-//     } else if (customerSearch.trim()) {
-//       finalCustomer = addCustomer({
-//         name: customerSearch,
-//         phone: ''
-//       });
-//     }
-
-//     if (paymentMethod === 'credit' && !finalCustomer) {
-//       setToast({
-//         type: 'error',
-//         message: t('selectCustomer')
-//       });
-//       setTimeout(() => setToast(null), 3000);
-//       return;
-//     }
-
-//     const transaction = completeTransaction(
-//       paymentMethod,
-//       finalCustomer,
-//       paymentMethod === 'credit'
-//         ? parseFloat(downPayment) || 0
-//         : undefined
-//     );
-
-//     if (!transaction) {
-//       throw new Error('Transaction not created');
-//     }
-
-//     if (shouldPrint) {
-//       await printReceipt(transaction);
-//     }
-
-//     // ✅ Success Popup
-//     setToast({
-//       type: 'success',
-//       message: 'تم حفظ العملية بنجاح'
-//     });
-
-//     // 🧼 Reset UI
-//     setSelectedCustomerId('');
-//     setCustomerSearch('');
-//     setPaymentMethod('cash');
-//     setDownPayment('');
-
-//     if (onClose) onClose();
-
-//     // ⏱️ إخفاء البوب
-//     setTimeout(() => setToast(null), 3000);
-
-//   } catch (error) {
-//     console.error('Transaction Error:', error);
-
-//     // ❌ Error Popup
-//     setToast({
-//       type: 'error',
-//       message: 'فشل حفظ العملية، حاول مرة أخرى'
-//     });
-
-//     setTimeout(() => setToast(null), 3000);
-//   }
-  // };
-  
   const handleProcessTransaction = async (shouldPrint: boolean) => {
   if (cart.length === 0 || isSaving) return;
 
@@ -274,13 +92,20 @@ if (!finalCustomer) {
 
 
 
-    const transaction = completeTransaction(
-      paymentMethod,
-      finalCustomer,
-      paymentMethod === 'credit'
-        ? parseFloat(downPayment) || 0
-        : undefined
-    );
+    // const transaction = completeTransaction(
+    //   paymentMethod,
+    //   finalCustomer,
+    //   paymentMethod === 'credit'
+    //     ? parseFloat(downPayment) || 0
+    //     : undefined
+    // );
+
+    const transaction = await completeTransaction(
+  paymentMethod,
+  finalCustomer,
+  paymentMethod === 'credit' ? (parseFloat(downPayment) || 0) : undefined
+);
+
 
     if (!transaction) {
       throw new Error('Transaction failed');
