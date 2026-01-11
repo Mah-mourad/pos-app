@@ -208,7 +208,9 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [aiSettings, setAiSettings] = useState<AIConfig>(DEFAULT_AI_CONFIG);
   
   const [serverStatus, setServerStatus] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
+    const [connectionError, setConnectionError] = useState<string | null>(null);
+    const [hydrated, setHydrated] = useState(false);
+
 
   // --- Initialization & Data Fetching (Supabase) ---
   useEffect(() => {
@@ -217,7 +219,13 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
             setProducts(JSON.parse(localStorage.getItem('pos_products') || JSON.stringify(INITIAL_PRODUCTS)));
             setCategories(JSON.parse(localStorage.getItem('pos_categories') || JSON.stringify(INITIAL_CATEGORIES)).sort((a: Category, b: Category) => a.order_index - b.order_index));
-            setTransactions(JSON.parse(localStorage.getItem('pos_transactions') || JSON.stringify(INITIAL_TRANSACTIONS)));
+            // setTransactions(JSON.parse(localStorage.getItem('pos_transactions') || JSON.stringify(INITIAL_TRANSACTIONS)));
+            const localTransactions = localStorage.getItem('pos_transactions');
+
+if (localTransactions && !isConfigured) {
+  setTransactions(JSON.parse(localTransactions));
+}
+
             setCustomers(JSON.parse(localStorage.getItem('pos_customers') || JSON.stringify(INITIAL_CUSTOMERS)));
             setExpenses(JSON.parse(localStorage.getItem('pos_expenses') || JSON.stringify(INITIAL_EXPENSES)));
             setMachines(JSON.parse(localStorage.getItem('pos_machines') || '[]'));
@@ -271,15 +279,23 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
         fetchCategories();
         // fetchData('transactions', setTransactions);
-        const fetchTransactions = async () => {
-  const { data, error } = await supabase.from('transactions').select('*');
+const fetchTransactions = async () => {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .order('date', { ascending: false });
+
   if (error) {
-    console.error('Error fetching transactions:', error);
-    setConnectionError(error.message);
-  } else if (data) {
-    setTransactions(data.map(normalizeTransaction));
+    console.error('Fetch transactions failed', error);
+    return;
+  }
+
+  if (data) {
+    setTransactions(data);
+    setHydrated(true); // ✅ دي أهم سطر
   }
 };
+
 fetchTransactions();
 
         fetchData('customers', setCustomers);
