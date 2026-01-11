@@ -508,48 +508,113 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const totalAmount = cart.reduce((sum, item) => sum + (item.finalPrice * item.quantity), 0);
 
-  // --- Transactions ---
-  const completeTransaction = (method: PaymentMethod, customer?: Customer, paidAmount?: number) => {
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      type: 'sale',
-      itemsCount: cart.reduce((acc, item) => acc + item.quantity, 0),
-      total: totalAmount,
-      date: new Date().toISOString(),
-      paymentMethod: method,
-      customerId: customer?.id,
-      customerName: customer?.name,
-      items: [...cart],
-      isPaid: method !== 'credit',
-      payments: []
-    };
+//   // --- Transactions ---
+//   const completeTransaction = (method: PaymentMethod, customer?: Customer, paidAmount?: number) => {
+//     const transaction: Transaction = {
+//       id: Date.now().toString(),
+//       type: 'sale',
+//       itemsCount: cart.reduce((acc, item) => acc + item.quantity, 0),
+//       total: totalAmount,
+//       date: new Date().toISOString(),
+//       paymentMethod: method,
+//       customerId: customer?.id,
+//       customerName: customer?.name,
+//       items: [...cart],
+//       isPaid: method !== 'credit',
+//       payments: []
+//     };
 
-    if (method === 'credit') {
-        if (paidAmount && paidAmount > 0) {
-            transaction.payments = [{
-                id: Date.now().toString() + '_init',
-                amount: paidAmount,
-                date: transaction.date,
-                method: 'cash' 
-            }];
-        }
-    } else {
-        transaction.payments = [{
-            id: Date.now().toString() + '_full',
-            amount: totalAmount,
-            date: transaction.date,
-            method: method
-        }];
-    }
+//     if (method === 'credit') {
+//         if (paidAmount && paidAmount > 0) {
+//             transaction.payments = [{
+//                 id: Date.now().toString() + '_init',
+//                 amount: paidAmount,
+//                 date: transaction.date,
+//                 method: 'cash' 
+//             }];
+//         }
+//     } else {
+//         transaction.payments = [{
+//             id: Date.now().toString() + '_full',
+//             amount: totalAmount,
+//             date: transaction.date,
+//             method: method
+//         }];
+//     }
 
-    setTransactions(prev => [...prev, transaction]);
-    dbWrite('transactions', 'insert', transaction);
+//     setTransactions(prev => [...prev, transaction]);
+//     dbWrite('transactions', 'insert', transaction);
     
-    clearCart();
-setSelectedCustomer(null); // ← تصفير العميل
-return transaction;
+//     clearCart();
+// setSelectedCustomer(null); // ← تصفير العميل
+// return transaction;
 
+    //   };
+    
+    // ✅ REPLACE WITH THIS
+const completeTransaction = async (
+  method: PaymentMethod,
+  customer?: Customer,
+  paidAmount?: number
+): Promise<Transaction> => {
+
+  if (!customer) {
+    throw new Error('CUSTOMER_REQUIRED');
+  }
+
+  if (!isConfigured || !supabase) {
+    throw new Error('DATABASE_NOT_CONNECTED');
+  }
+
+  const baseTransaction = {
+    type: 'sale',
+    itemsCount: cart.reduce((acc, item) => acc + item.quantity, 0),
+    total: totalAmount,
+    date: new Date().toISOString(),
+    paymentMethod: method,
+    customerId: customer.id,
+    customerName: customer.name,
+    items: cart,
+    isPaid: method !== 'credit',
+    payments:
+      method === 'credit'
+        ? paidAmount && paidAmount > 0
+          ? [{
+              amount: paidAmount,
+              date: new Date().toISOString(),
+              method: 'cash'
+            }]
+          : []
+        : [{
+            amount: totalAmount,
+            date: new Date().toISOString(),
+            method
+          }]
   };
+
+  // 1️⃣ INSERT INTO DB
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert(baseTransaction)
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error('Transaction insert failed:', error);
+    throw new Error('TRANSACTION_SAVE_FAILED');
+  }
+
+  // 2️⃣ Update local state ONLY after DB success
+  setTransactions(prev => [...prev, data]);
+
+  // 3️⃣ Clear UI
+  clearCart();
+  setSelectedCustomer(null);
+
+  // 4️⃣ Return REAL DB ROW (with id_uuid)
+  return data as Transaction;
+};
+
 
   const markTransactionAsPaid = (transactionId: string) => {
       // Logic handled via addPaymentToTransaction mainly
