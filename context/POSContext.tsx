@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   Product,
@@ -29,12 +28,29 @@ import QRCode from 'qrcode';
 import { supabase, isConfigured } from '../supabaseConfig';
 
 
+// const normalizeTransaction = (row: any): Transaction => {
+//   if (!row) return row;
+//   // خليه دايمًا يملك id عشان باقي الكود يشتغل
+//   return {
+//     ...row,
+//     id: row.id ?? row.id_uuid,   // ✅ هنا السر
+//   } as Transaction;
+// };
+
+// const normalizeTransaction = (row: any): Transaction => {
+//   if (!row) return row;
+
+//   return {
+//     ...row,
+//     id: row.id_uuid,   // 🔒 قراءة فقط – مصدر الحقيقة
+//   } as Transaction;
+// };
+
 const normalizeTransaction = (row: any): Transaction => {
   if (!row) return row;
-  // خليه دايمًا يملك id عشان باقي الكود يشتغل
   return {
     ...row,
-    id: row.id ?? row.id_uuid,   // ✅ هنا السر
+    id: row.id ?? row.id_uuid,
   } as Transaction;
 };
 
@@ -220,11 +236,11 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             setProducts(JSON.parse(localStorage.getItem('pos_products') || JSON.stringify(INITIAL_PRODUCTS)));
             setCategories(JSON.parse(localStorage.getItem('pos_categories') || JSON.stringify(INITIAL_CATEGORIES)).sort((a: Category, b: Category) => a.order_index - b.order_index));
             // setTransactions(JSON.parse(localStorage.getItem('pos_transactions') || JSON.stringify(INITIAL_TRANSACTIONS)));
-            const localTransactions = localStorage.getItem('pos_transactions');
+//             const localTransactions = localStorage.getItem('pos_transactions');
 
-if (localTransactions && !isConfigured) {
-  setTransactions(JSON.parse(localTransactions));
-}
+// if (localTransactions && !isConfigured) {
+//   setTransactions(JSON.parse(localTransactions));
+// }
 
             setCustomers(JSON.parse(localStorage.getItem('pos_customers') || JSON.stringify(INITIAL_CUSTOMERS)));
             setExpenses(JSON.parse(localStorage.getItem('pos_expenses') || JSON.stringify(INITIAL_EXPENSES)));
@@ -279,22 +295,61 @@ if (localTransactions && !isConfigured) {
         };
         fetchCategories();
         // fetchData('transactions', setTransactions);
-const fetchTransactions = async () => {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .order('date', { ascending: false });
+// const fetchTransactions = async () => {
+//   const { data, error } = await supabase
+//     .from('transactions')
+//     .select('*')
+//     // .order('date', { ascending: false });
+//     // .order('created_at', { ascending: false });
+//     .order('date', { ascending: false, nullsFirst: false });
 
-  if (error) {
-    console.error('Fetch transactions failed', error);
-    return;
+
+//   if (error) {
+//     console.error('Fetch transactions failed', error);
+//     return;
+//   }
+
+//   if (data) {
+//       // setTransactions(data);
+//       setTransactions(data.map(normalizeTransaction));
+//     setHydrated(true); // ✅ دي أهم سطر
+//   }
+        // };
+        
+        const fetchTransactions = async () => {
+  if (!supabase) return;
+
+  const pageSize = 1000;
+  let from = 0;
+  let all: any[] = [];
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .order('date', { ascending: false, nullsFirst: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error('Fetch transactions failed', error);
+      setConnectionError(error.message);
+      break;
+    }
+
+    if (!data || data.length === 0) break;
+
+    all = all.concat(data);
+
+    // لو رجع أقل من pageSize يبقى خلصنا
+    if (data.length < pageSize) break;
+
+    from += pageSize;
   }
 
-  if (data) {
-    setTransactions(data);
-    setHydrated(true); // ✅ دي أهم سطر
-  }
+  setTransactions(all.map(normalizeTransaction));
+  setHydrated(true);
 };
+
 
 fetchTransactions();
 
@@ -419,7 +474,7 @@ fetchTransactions();
   // --- Persistence (Local Storage Fallback) ---
   useEffect(() => localStorage.setItem('pos_products', safeStringify(products)), [products]);
   useEffect(() => localStorage.setItem('pos_categories', safeStringify(categories)), [categories]);
-  useEffect(() => localStorage.setItem('pos_transactions', safeStringify(transactions)), [transactions]);
+//   useEffect(() => localStorage.setItem('pos_transactions', safeStringify(transactions)), [transactions]);
   useEffect(() => localStorage.setItem('pos_customers', safeStringify(customers)), [customers]);
   useEffect(() => localStorage.setItem('pos_expenses', safeStringify(expenses)), [expenses]);
   useEffect(() => localStorage.setItem('pos_machines', safeStringify(machines)), [machines]);
@@ -573,24 +628,82 @@ fetchTransactions();
    // --- Transactions ---
     
     // ✅ REPLACE WITH THIS
+// const completeTransaction = async (
+//   method: PaymentMethod,
+//   customer?: Customer,
+//   paidAmount?: number
+// ): Promise<Transaction> => {
+
+//   if (!customer) {
+//     throw new Error('CUSTOMER_REQUIRED');
+//   }
+
+//   if (!isConfigured || !supabase) {
+//     throw new Error('DATABASE_NOT_CONNECTED');
+//   }
+
+//   const baseTransaction = {
+//     type: 'sale',
+//     itemsCount: cart.reduce((acc, item) => acc + item.quantity, 0),
+//     total: totalAmount,
+//     date: new Date().toISOString(),
+//     paymentMethod: method,
+//     customerId: customer.id,
+//     customerName: customer.name,
+//     items: cart,
+//     isPaid: method !== 'credit',
+//     payments:
+//       method === 'credit'
+//         ? paidAmount && paidAmount > 0
+//           ? [{
+//               amount: paidAmount,
+//               date: new Date().toISOString(),
+//               method: 'cash'
+//             }]
+//           : []
+//         : [{
+//             amount: totalAmount,
+//             date: new Date().toISOString(),
+//             method
+//           }]
+//   };
+
+//   // 1️⃣ INSERT INTO DB
+//   const { data, error } = await supabase
+//     .from('transactions')
+//     .insert(baseTransaction)
+//     .select()
+//     .single();
+
+//   if (error || !data) {
+//     console.error('Transaction insert failed:', error);
+//     throw new Error('TRANSACTION_SAVE_FAILED');
+//   }
+
+//   // 2️⃣ Update local state ONLY after DB success
+//   setTransactions(prev => [...prev, data]);
+
+//   // 3️⃣ Clear UI
+//   clearCart();
+//   setSelectedCustomer(null);
+
+//   // 4️⃣ Return REAL DB ROW (with id_uuid)
+//   return data as Transaction;
+    // };
+    
 const completeTransaction = async (
   method: PaymentMethod,
-  customer?: Customer,
+  customer: Customer,
   paidAmount?: number
 ): Promise<Transaction> => {
 
-  if (!customer) {
-    throw new Error('CUSTOMER_REQUIRED');
-  }
+  if (!customer) throw new Error('CUSTOMER_REQUIRED');
+  if (!isConfigured || !supabase) throw new Error('DATABASE_NOT_CONNECTED');
 
-  if (!isConfigured || !supabase) {
-    throw new Error('DATABASE_NOT_CONNECTED');
-  }
-
-  const baseTransaction = {
+  const payload = {
     type: 'sale',
     itemsCount: cart.reduce((acc, item) => acc + item.quantity, 0),
-    total: totalAmount,
+      total: totalAmount,
     date: new Date().toISOString(),
     paymentMethod: method,
     customerId: customer.id,
@@ -600,41 +713,31 @@ const completeTransaction = async (
     payments:
       method === 'credit'
         ? paidAmount && paidAmount > 0
-          ? [{
-              amount: paidAmount,
-              date: new Date().toISOString(),
-              method: 'cash'
-            }]
+          ? [{ amount: paidAmount, method, date: new Date().toISOString() }]
           : []
-        : [{
-            amount: totalAmount,
-            date: new Date().toISOString(),
-            method
-          }]
+        : [{ amount: totalAmount, method, date: new Date().toISOString() }]
   };
 
-  // 1️⃣ INSERT INTO DB
   const { data, error } = await supabase
     .from('transactions')
-    .insert(baseTransaction)
+    .insert(payload)
     .select()
     .single();
 
   if (error || !data) {
-    console.error('Transaction insert failed:', error);
+    console.error(error);
     throw new Error('TRANSACTION_SAVE_FAILED');
   }
 
-  // 2️⃣ Update local state ONLY after DB success
-  setTransactions(prev => [...prev, data]);
-
-  // 3️⃣ Clear UI
   clearCart();
   setSelectedCustomer(null);
 
-  // 4️⃣ Return REAL DB ROW (with id_uuid)
-  return data as Transaction;
+  // ❗ مفيش setTransactions هنا
+  // realtime هيعمل كل حاجة
+
+  return normalizeTransaction(data);
 };
+
 
 
   const markTransactionAsPaid = (transactionId: string) => {
@@ -668,70 +771,118 @@ const completeTransaction = async (
       // DB Update
       if (updatedTransaction) {
           dbWrite('transactions', 'update', updatedTransaction, transactionId);
-          // Note: collection receipts are intentionally NOT created here to avoid
-          // counting the same collected amount twice (once on the original
-          // invoice date and once on the collection date). The payment is
-          // recorded inside the original transaction with the collection date,
-          // so cash register / daily totals should use payment dates when
-          // aggregating receipts.
       }
   };
 
-  const collectDebtFromCustomer = (customerId: string, amount: number, method: PaymentMethod) => {
-      // Just record collection receipt logic here
-      // For detailed distribution logic, we'd need to update multiple rows.
-      // Keeping it simple: Add collection receipt + Logic to update oldest debts?
-      // In this simplified version, we just create a collection receipt and assume manual allocation or future enhancement.
-      // Ideally: iterate transactions for customer and update them.
+//   const collectDebtFromCustomer = (customerId: string, amount: number, method: PaymentMethod) => {
+//       // Just record collection receipt logic here
+//       // For detailed distribution logic, we'd need to update multiple rows.
+//       // Keeping it simple: Add collection receipt + Logic to update oldest debts?
+//       // In this simplified version, we just create a collection receipt and assume manual allocation or future enhancement.
+//       // Ideally: iterate transactions for customer and update them.
+//       let remainingToCollect = amount;
       
-      let remainingToCollect = amount;
-      
-      // Update local state and DB for relevant transactions
-      const customerTrans = transactions.filter(t => t.customerId === customerId && t.paymentMethod === 'credit' && !t.isPaid && t.type !== 'collection')
-                                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+//       // Update local state and DB for relevant transactions
+//       const customerTrans = transactions.filter(t => t.customerId === customerId && t.paymentMethod === 'credit' && !t.isPaid && t.type !== 'collection')
+//                                     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           
-      customerTrans.forEach(t => {
-          if (remainingToCollect <= 0) return;
-          const paid = t.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-          const debt = t.total - paid;
-          const payAmount = Math.min(debt, remainingToCollect);
+//       customerTrans.forEach(t => {
+//           if (remainingToCollect <= 0) return;
+//           const paid = t.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+//           const debt = t.total - paid;
+//           const payAmount = Math.min(debt, remainingToCollect);
           
-          if (payAmount > 0) {
-              const newPayment = { id: Date.now().toString() + Math.random(), amount: payAmount, date: new Date().toISOString(), method };
-              const newPayments = [...(t.payments || []), newPayment];
-              const updatedT = {
-                  ...t,
-                  payments: newPayments,
-                  isPaid: (paid + payAmount) >= t.total - 0.01
-              };
+//           if (payAmount > 0) {
+//               const newPayment = { id: Date.now().toString() + Math.random(), amount: payAmount, date: new Date().toISOString(), method };
+//               const newPayments = [...(t.payments || []), newPayment];
+//               const updatedT = {
+//                   ...t,
+//                   payments: newPayments,
+//                   isPaid: (paid + payAmount) >= t.total - 0.01
+//               };
               
-              // Update State
-              setTransactions(prev => prev.map(pt => pt.id === t.id ? updatedT : pt));
-              // Update DB
-              dbWrite('transactions', 'update', updatedT, t.id);
+//               // Update State
+//               setTransactions(prev => prev.map(pt => pt.id === t.id ? updatedT : pt));
+//               // Update DB
+//               dbWrite('transactions', 'update', updatedT, t.id);
               
-              remainingToCollect -= payAmount;
-          }
-      });
+//               remainingToCollect -= payAmount;
+//           }
+//       });
 
-      // Create Collection Receipt
-      const collectionTrans: Transaction = {
-          id: 'col_' + Date.now().toString(),
-          type: 'collection',
-          date: new Date().toISOString(),
-          itemsCount: 0,
-          total: amount,
-          paymentMethod: method,
-          customerId: customerId,
-          customerName: customers.find(c => c.id === customerId)?.name,
-          isPaid: true,
-          items: [],
-          payments: [] // Removed payment array here to prevent double counting in reports
+//       // Create Collection Receipt
+//     //   const collectionTrans: Transaction = {
+//     //       id: 'col_' + Date.now().toString(),
+//     //       type: 'collection',
+//     //       date: new Date().toISOString(),
+//     //       itemsCount: 0,
+//     //       total: amount,
+//     //       paymentMethod: method,
+//     //       customerId: customerId,
+//     //       customerName: customers.find(c => c.id === customerId)?.name,
+//     //       isPaid: true,
+//     //       items: [],
+//     //       payments: [] // Removed payment array here to prevent double counting in reports
+//     //     };
+      
+//     //   setTransactions(prev => [...prev, collectionTrans]);
+//       //   dbWrite('transactions', 'insert', collectionTrans);
+
+//   };
+    // setTransactions(prev => [...prev, normalizeTransaction(data)]);
+
+
+    const collectDebtFromCustomer = (
+  customerId: string,
+  amount: number,
+  method: PaymentMethod
+) => {
+  let remaining = amount;
+
+  const customerTrans = transactions
+    .filter(t =>
+      t.customerId === customerId &&
+      t.paymentMethod === 'credit' &&
+      !t.isPaid &&
+      t.type !== 'collection'
+    )
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  customerTrans.forEach(t => {
+    if (remaining <= 0) return;
+
+    const paid = t.payments?.reduce((s, p) => s + p.amount, 0) || 0;
+    const debt = t.total - paid;
+    const pay = Math.min(debt, remaining);
+
+    if (pay > 0) {
+      const newPayment: PaymentRecord = {
+        id: Date.now().toString(),
+        amount: pay,
+        date: new Date().toISOString(),
+        method
       };
-      setTransactions(prev => [...prev, collectionTrans]);
-      dbWrite('transactions', 'insert', collectionTrans);
-  };
 
+      const updated: Transaction = {
+        ...t,
+        payments: [...(t.payments || []), newPayment],
+        isPaid: paid + pay >= t.total - 0.01
+      };
+
+      // ✅ update local
+      setTransactions(prev =>
+        prev.map(x => x.id === t.id ? updated : x)
+      );
+
+      // ✅ update DB
+      dbWrite('transactions', 'update', updated, t.id);
+
+      remaining -= pay;
+    }
+  });
+};
+
+    
   const deleteTransaction = (transactionId: string) => {
       setTransactions(prev => prev.filter(t => t.id !== transactionId));
       dbWrite('transactions', 'delete', null, transactionId);
@@ -1092,539 +1243,3 @@ export const usePOS = () => {
   }
   return context;
 };
-
-
-
-
-
-
-
-// import React, {
-//   createContext,
-//   useContext,
-//   useState,
-//   useEffect,
-//   ReactNode,
-// } from 'react';
-
-// import {
-//   Product,
-//   CartItem,
-//   Transaction,
-//   ViewState,
-//   ReceiptSettings,
-//   PaymentMethod,
-//   Customer,
-//   Expense,
-//   Service,
-//   PaymentRecord,
-//   AppSettings,
-//   User,
-//   Permission,
-//   Machine,
-//   MachineReading,
-//   Supplier,
-//   AIConfig,
-// } from '../types';
-
-// import {
-//   INITIAL_PRODUCTS,
-//   INITIAL_CATEGORIES,
-//   INITIAL_CUSTOMERS,
-//   INITIAL_EXPENSES,
-//   INITIAL_USERS,
-//   INITIAL_TRANSACTIONS,
-//   DEFAULT_RECEIPT_SETTINGS,
-//   DEFAULT_APP_SETTINGS,
-//   DEFAULT_AI_CONFIG,
-// } from '../constants';
-
-// import { translations, TranslationKey } from '../translations';
-// import { supabase, isConfigured } from '../supabaseConfig';
-
-// /* ===========================
-//    Helpers
-// =========================== */
-
-// const safeStringify = (obj: any) => {
-//   try {
-//     return JSON.stringify(obj);
-//   } catch {
-//     return '';
-//   }
-// };
-
-// const sanitize = (data: any): any => {
-//   if (data === undefined || typeof data === 'function') return null;
-//   if (Array.isArray(data)) return data.map(sanitize);
-//   if (data instanceof Date) return data.toISOString();
-//   if (typeof data === 'object' && data !== null) {
-//     const out: any = {};
-//     for (const k in data) out[k] = sanitize(data[k]);
-//     return out;
-//   }
-//   return data;
-// };
-
-// /* ===========================
-//    Context
-// =========================== */
-
-// interface POSContextType {
-//   products: Product[];
-//   categories: any[];
-//   cart: CartItem[];
-//   transactions: Transaction[];
-//   customers: Customer[];
-//   expenses: Expense[];
-//   machines: Machine[];
-//   machineReadings: MachineReading[];
-//   users: User[];
-//   suppliers: Supplier[];
-//   currentUser: User | null;
-
-//   currentView: ViewState;
-//   setView: (v: ViewState) => void;
-
-//   addToCart: (item: CartItem) => void;
-//   removeFromCart: (id: string, index: number) => void;
-//   updateQuantity: (index: number, delta: number) => void;
-//   setQuantity: (index: number, q: number) => void;
-//   updateCartItemDimensions: (i: number, w: number, h: number) => void;
-//   toggleServiceForCartItem: (i: number, s: Service) => void;
-//   clearCart: () => void;
-
-//   completeTransaction: (
-//     method: PaymentMethod,
-//     customer?: Customer,
-//     paidAmount?: number
-//   ) => Transaction | undefined;
-
-//   addPaymentToTransaction: (
-//     transactionId: string,
-//     amount: number,
-//     method: PaymentMethod
-//   ) => void;
-
-//   collectDebtFromCustomer: (
-//     customerId: string,
-//     amount: number,
-//     method: PaymentMethod
-//   ) => void;
-
-//   deleteTransaction: (id: string) => void;
-
-//   login: (u: string, p: string) => boolean;
-//   logout: () => void;
-//   hasPermission: (p: Permission) => boolean;
-
-//   totalAmount: number;
-
-//   receiptSettings: ReceiptSettings;
-//   appSettings: AppSettings;
-//   aiSettings: AIConfig;
-
-//   t: (k: string, p?: any) => string;
-
-//   serverStatus: boolean;
-//   connectionError: string | null;
-// }
-
-// const POSContext = createContext<POSContextType | undefined>(undefined);
-
-// /* ===========================
-//    Provider
-// =========================== */
-
-// export const POSProvider = ({ children }: { children: ReactNode }) => {
-//   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-//   const [categories, setCategories] = useState<any[]>(INITIAL_CATEGORIES);
-//   const [cart, setCart] = useState<CartItem[]>([]);
-//   const [transactions, setTransactions] =
-//     useState<Transaction[]>(INITIAL_TRANSACTIONS);
-//   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
-//   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
-//   const [machines, setMachines] = useState<Machine[]>([]);
-//   const [machineReadings, setMachineReadings] =
-//     useState<MachineReading[]>([]);
-//   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-//   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-//   const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-//   const [currentView, setView] = useState<ViewState>(ViewState.LOGIN);
-//   const [receiptSettings] = useState<ReceiptSettings>(
-//     DEFAULT_RECEIPT_SETTINGS
-//   );
-//   const [appSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
-//   const [aiSettings] = useState<AIConfig>(DEFAULT_AI_CONFIG);
-
-//   const [serverStatus, setServerStatus] = useState(false);
-//   const [connectionError, setConnectionError] = useState<string | null>(null);
-
-//   /* ===========================
-//      Init + Users load (FIX LOGIN)
-//   =========================== */
-    
-//     useEffect(() => {
-//   if (!isConfigured || !supabase) {
-//     setServerStatus(false);
-//     return;
-//   }
-
-//   setServerStatus(true);
-
-//   const load = async () => {
-//     const tables = [
-//       ['products', setProducts],
-//       ['categories', setCategories],
-//       ['customers', setCustomers],
-//       ['transactions', setTransactions],
-//       ['expenses', setExpenses],
-//       ['suppliers', setSuppliers],
-//       ['users', setUsers],
-//     ];
-
-//     for (const [table, setter] of tables) {
-//       const { data, error } = await supabase.from(table).select('*');
-//       if (!error && data) setter(data);
-//     }
-//   };
-
-//   load();
-// }, []);
-
-
-//   useEffect(() => {
-//     const localUsers = localStorage.getItem('pos_users');
-//     if (localUsers) {
-//       try {
-//         setUsers(JSON.parse(localUsers));
-//       } catch {}
-//     }
-
-//     if (isConfigured && supabase) {
-//       setServerStatus(true);
-//       supabase
-//         .from('users')
-//         .select('*')
-//         .then(({ data, error }) => {
-//           if (error) {
-//             setConnectionError(error.message);
-//           }
-//           if (data && data.length > 0) {
-//             setUsers(data);
-//           }
-//         });
-//     } else {
-//       setServerStatus(false);
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     localStorage.setItem('pos_users', safeStringify(users));
-//   }, [users]);
-
-//   /* ===========================
-//      Cart
-//   =========================== */
-
-//   const addToCart = (item: CartItem) => {
-//     setCart(prev => [...prev, item]);
-//   };
-
-//   const removeFromCart = (_: string, index: number) => {
-//     setCart(prev => prev.filter((_, i) => i !== index));
-//   };
-
-//   const updateQuantity = (index: number, delta: number) => {
-//     setCart(prev => {
-//       const c = [...prev];
-//       c[index].quantity = Math.max(1, c[index].quantity + delta);
-//       return c;
-//     });
-//   };
-
-//   const setQuantity = (index: number, q: number) => {
-//     if (q <= 0) return;
-//     setCart(prev => {
-//       const c = [...prev];
-//       c[index].quantity = q;
-//       return c;
-//     });
-//   };
-
-//   const updateCartItemDimensions = (i: number, w: number, h: number) => {
-//     setCart(prev => {
-//       const c = [...prev];
-//       const item = c[i];
-//       if (item.pricingMethod === 'area') {
-//         const area = w * h;
-//         const base = item.price * area;
-//         const services = item.selectedServices.reduce(
-//           (s, sv) => s + sv.price * area,
-//           0
-//         );
-//         c[i] = {
-//           ...item,
-//           dimensions: { width: w, height: h },
-//           finalPrice: base + services,
-//         };
-//       }
-//       return c;
-//     });
-//   };
-
-//   const toggleServiceForCartItem = (i: number, s: Service) => {
-//     setCart(prev => {
-//       const c = [...prev];
-//       const item = c[i];
-//       const exists = item.selectedServices.find(x => x.id === s.id);
-//       const services = exists
-//         ? item.selectedServices.filter(x => x.id !== s.id)
-//         : [...item.selectedServices, s];
-
-//       const area =
-//         item.pricingMethod === 'area' && item.dimensions
-//           ? item.dimensions.width * item.dimensions.height
-//           : 1;
-
-//       const base =
-//         item.pricingMethod === 'area' ? item.price * area : item.price;
-
-//       const servicesTotal = services.reduce(
-//         (sum, sv) =>
-//           sum +
-//           (item.pricingMethod === 'area' ? sv.price * area : sv.price),
-//         0
-//       );
-
-//       c[i] = {
-//         ...item,
-//         selectedServices: services,
-//         finalPrice: base + servicesTotal,
-//       };
-//       return c;
-//     });
-//   };
-
-//   const clearCart = () => setCart([]);
-
-//   const totalAmount = cart.reduce(
-//     (s, i) => s + i.finalPrice * i.quantity,
-//     0
-//   );
-
-//   /* ===========================
-//      Transactions + Payments
-//   =========================== */
-
-//   const completeTransaction = (
-//     method: PaymentMethod,
-//     customer?: Customer,
-//     paidAmount?: number
-//   ) => {
-//     if (cart.length === 0) return;
-
-//     const id = Date.now().toString();
-//     const date = new Date().toISOString();
-
-//     const transaction: Transaction = {
-//       id,
-//       type: 'sale',
-//       date,
-//       items: [...cart],
-//       itemsCount: cart.reduce((a, i) => a + i.quantity, 0),
-//       total: totalAmount,
-//       paymentMethod: method,
-//       customerId: customer?.id,
-//       customerName: customer?.name,
-//       payments: [],
-//       isPaid: method !== 'credit',
-//     };
-
-//     if (method === 'credit') {
-//       if (paidAmount && paidAmount > 0) {
-//         transaction.payments.push({
-//           id: id + '_p1',
-//           amount: paidAmount,
-//           date,
-//           method: 'cash',
-//         });
-//       }
-//     } else {
-//       transaction.payments.push({
-//         id: id + '_full',
-//         amount: totalAmount,
-//         date,
-//         method,
-//       });
-//     }
-
-//     setTransactions(prev => [...prev, transaction]);
-
-//     if (isConfigured && supabase) {
-//       supabase.from('transactions').insert(sanitize(transaction));
-//     }
-
-//     clearCart();
-//     return transaction;
-//   };
-
-//   const addPaymentToTransaction = (
-//     transactionId: string,
-//     amount: number,
-//     method: PaymentMethod
-//   ) => {
-//     setTransactions(prev =>
-//       prev.map(t => {
-//         if (t.id !== transactionId) return t;
-
-//         const payment: PaymentRecord = {
-//           id: Date.now().toString(),
-//           amount,
-//           date: new Date().toISOString(),
-//           method,
-//         };
-
-//         const payments = [...(t.payments || []), payment];
-//         const paid = payments.reduce((s, p) => s + p.amount, 0);
-
-//         const updated = {
-//           ...t,
-//           payments,
-//           isPaid: paid >= t.total - 0.01,
-//         };
-
-//         if (isConfigured && supabase) {
-//           supabase.from('transactions').update(sanitize(updated)).eq('id', t.id);
-//         }
-
-//         return updated;
-//       })
-//     );
-//   };
-
-//   const collectDebtFromCustomer = (
-//     customerId: string,
-//     amount: number,
-//     method: PaymentMethod
-//   ) => {
-//     let remaining = amount;
-
-//     const sorted = transactions
-//       .filter(
-//         t =>
-//           t.customerId === customerId &&
-//           !t.isPaid &&
-//           t.paymentMethod === 'credit'
-//       )
-//       .sort((a, b) => +new Date(a.date) - +new Date(b.date));
-
-//     sorted.forEach(t => {
-//       if (remaining <= 0) return;
-//       const paid = t.payments?.reduce((s, p) => s + p.amount, 0) || 0;
-//       const debt = t.total - paid;
-//       const pay = Math.min(debt, remaining);
-//       addPaymentToTransaction(t.id, pay, method);
-//       remaining -= pay;
-//     });
-//   };
-
-//   const deleteTransaction = (id: string) => {
-//     setTransactions(prev => prev.filter(t => t.id !== id));
-//     if (isConfigured && supabase) {
-//       supabase.from('transactions').delete().eq('id', id);
-//     }
-//   };
-
-//   /* ===========================
-//      Auth
-//   =========================== */
-
-//   const login = (u: string, p: string) => {
-//     const user = users.find(
-//       x => x.username.toLowerCase() === u.toLowerCase() && x.pin === p
-//     );
-//     if (!user) return false;
-//     setCurrentUser(user);
-//     setView(ViewState.POS);
-//     return true;
-//   };
-
-//   const logout = () => {
-//     setCurrentUser(null);
-//     setView(ViewState.LOGIN);
-//   };
-
-//   const hasPermission = (perm: Permission) => {
-//     if (!currentUser) return false;
-//     if (currentUser.role === 'admin') return true;
-//     return currentUser.permissions.includes(perm);
-//   };
-
-//   const t = (key: string, params?: any) => {
-//     const lang = appSettings.language || 'ar';
-//     const text =
-//       translations[lang]?.[key as TranslationKey] ??
-//       translations.ar[key as TranslationKey] ??
-//       key;
-//     if (!params) return text;
-//     return Object.keys(params).reduce(
-//       (s, k) => s.replace(`{${k}}`, params[k]),
-//       text
-//     );
-//   };
-
-//   return (
-//     <POSContext.Provider
-//       value={{
-//         products,
-//         categories,
-//         cart,
-//         transactions,
-//         customers,
-//         expenses,
-//         machines,
-//         machineReadings,
-//         users,
-//         suppliers,
-//         currentUser,
-//         currentView,
-//         setView,
-//         addToCart,
-//         removeFromCart,
-//         updateQuantity,
-//         setQuantity,
-//         updateCartItemDimensions,
-//         toggleServiceForCartItem,
-//         clearCart,
-//         completeTransaction,
-//         addPaymentToTransaction,
-//         collectDebtFromCustomer,
-//         deleteTransaction,
-//         login,
-//         logout,
-//         hasPermission,
-//         totalAmount,
-//         receiptSettings,
-//         appSettings,
-//         aiSettings,
-//         t,
-//         serverStatus,
-//         connectionError,
-//       }}
-//     >
-//       {children}
-//     </POSContext.Provider>
-//   );
-// };
-
-// /* ===========================
-//    Hook
-// =========================== */
-
-// export const usePOS = () => {
-//   const ctx = useContext(POSContext);
-//   if (!ctx) throw new Error('usePOS must be used within POSProvider');
-//   return ctx;
-// };
