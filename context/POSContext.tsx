@@ -28,24 +28,6 @@ import QRCode from 'qrcode';
 import { supabase, isConfigured } from '../supabaseConfig';
 
 
-// const normalizeTransaction = (row: any): Transaction => {
-//   if (!row) return row;
-//   // خليه دايمًا يملك id عشان باقي الكود يشتغل
-//   return {
-//     ...row,
-//     id: row.id ?? row.id_uuid,   // ✅ هنا السر
-//   } as Transaction;
-// };
-
-// const normalizeTransaction = (row: any): Transaction => {
-//   if (!row) return row;
-
-//   return {
-//     ...row,
-//     id: row.id_uuid,   // 🔒 قراءة فقط – مصدر الحقيقة
-//   } as Transaction;
-// };
-
 const normalizeTransaction = (row: any): Transaction => {
   if (!row) return row;
   return {
@@ -235,13 +217,6 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
             setProducts(JSON.parse(localStorage.getItem('pos_products') || JSON.stringify(INITIAL_PRODUCTS)));
             setCategories(JSON.parse(localStorage.getItem('pos_categories') || JSON.stringify(INITIAL_CATEGORIES)).sort((a: Category, b: Category) => a.order_index - b.order_index));
-            // setTransactions(JSON.parse(localStorage.getItem('pos_transactions') || JSON.stringify(INITIAL_TRANSACTIONS)));
-//             const localTransactions = localStorage.getItem('pos_transactions');
-
-// if (localTransactions && !isConfigured) {
-//   setTransactions(JSON.parse(localTransactions));
-// }
-
             setCustomers(JSON.parse(localStorage.getItem('pos_customers') || JSON.stringify(INITIAL_CUSTOMERS)));
             setExpenses(JSON.parse(localStorage.getItem('pos_expenses') || JSON.stringify(INITIAL_EXPENSES)));
             setMachines(JSON.parse(localStorage.getItem('pos_machines') || '[]'));
@@ -294,27 +269,6 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             }
         };
         fetchCategories();
-        // fetchData('transactions', setTransactions);
-// const fetchTransactions = async () => {
-//   const { data, error } = await supabase
-//     .from('transactions')
-//     .select('*')
-//     // .order('date', { ascending: false });
-//     // .order('created_at', { ascending: false });
-//     .order('date', { ascending: false, nullsFirst: false });
-
-
-//   if (error) {
-//     console.error('Fetch transactions failed', error);
-//     return;
-//   }
-
-//   if (data) {
-//       // setTransactions(data);
-//       setTransactions(data.map(normalizeTransaction));
-//     setHydrated(true); // ✅ دي أهم سطر
-//   }
-        // };
         
         const fetchTransactions = async () => {
   if (!supabase) return;
@@ -429,27 +383,27 @@ fetchTransactions();
   break;
 }
 
-                    case 'customers': updateState(setCustomers); break;
-                    case 'expenses': updateState(setExpenses); break;
-                    case 'machines': updateState(setMachines); break;
-                    case 'machine_readings': updateState(setMachineReadings); break;
-                    case 'suppliers': updateState(setSuppliers); break; // Suppliers Realtime
-                    case 'users': updateState(setUsers); break;
-                                        case 'categories':
-                                            if (eventType === 'INSERT') {
-                                                setCategories(prev => {
-                                                    // Check if item already exists to prevent duplication from optimistic update
-                                                    const exists = prev.some((item) => item.name === newRow.name);
-                                                    if (exists) return prev;
-                                                    // Assign order_index if not present, or use existing from newRow
-                                                    const newCategory = { name: newRow.name, order_index: newRow.order_index ?? prev.length };
-                                                    return [...prev, newCategory].sort((a, b) => a.order_index - b.order_index);
-                                                });
-                                            }
-                                            if (eventType === 'UPDATE') {
-                                                setCategories(prev => prev.map((item) => item.name === newRow.name ? newRow : item).sort((a, b) => a.order_index - b.order_index));
-                                            }
-                                            if (eventType === 'DELETE') setCategories(prev => prev.filter((item) => item.name !== oldRow.name).sort((a, b) => a.order_index - b.order_index));
+    case 'customers': updateState(setCustomers); break;
+    case 'expenses': updateState(setExpenses); break;
+    case 'machines': updateState(setMachines); break;
+    case 'machine_readings': updateState(setMachineReadings); break;
+    case 'suppliers': updateState(setSuppliers); break; // Suppliers Realtime
+    case 'users': updateState(setUsers); break;
+                        case 'categories':
+                            if (eventType === 'INSERT') {
+                                setCategories(prev => {
+                                    // Check if item already exists to prevent duplication from optimistic update
+                                    const exists = prev.some((item) => item.name === newRow.name);
+                                    if (exists) return prev;
+                                    // Assign order_index if not present, or use existing from newRow
+                                    const newCategory = { name: newRow.name, order_index: newRow.order_index ?? prev.length };
+                                    return [...prev, newCategory].sort((a, b) => a.order_index - b.order_index);
+                                });
+                            }
+                            if (eventType === 'UPDATE') {
+                                setCategories(prev => prev.map((item) => item.name === newRow.name ? newRow : item).sort((a, b) => a.order_index - b.order_index));
+                            }
+                            if (eventType === 'DELETE') setCategories(prev => prev.filter((item) => item.name !== oldRow.name).sort((a, b) => a.order_index - b.order_index));
                         break;
                   case 'settings': {
   const row = newRow as SettingsRow;
@@ -627,70 +581,6 @@ fetchTransactions();
 
    // --- Transactions ---
     
-    // ✅ REPLACE WITH THIS
-// const completeTransaction = async (
-//   method: PaymentMethod,
-//   customer?: Customer,
-//   paidAmount?: number
-// ): Promise<Transaction> => {
-
-//   if (!customer) {
-//     throw new Error('CUSTOMER_REQUIRED');
-//   }
-
-//   if (!isConfigured || !supabase) {
-//     throw new Error('DATABASE_NOT_CONNECTED');
-//   }
-
-//   const baseTransaction = {
-//     type: 'sale',
-//     itemsCount: cart.reduce((acc, item) => acc + item.quantity, 0),
-//     total: totalAmount,
-//     date: new Date().toISOString(),
-//     paymentMethod: method,
-//     customerId: customer.id,
-//     customerName: customer.name,
-//     items: cart,
-//     isPaid: method !== 'credit',
-//     payments:
-//       method === 'credit'
-//         ? paidAmount && paidAmount > 0
-//           ? [{
-//               amount: paidAmount,
-//               date: new Date().toISOString(),
-//               method: 'cash'
-//             }]
-//           : []
-//         : [{
-//             amount: totalAmount,
-//             date: new Date().toISOString(),
-//             method
-//           }]
-//   };
-
-//   // 1️⃣ INSERT INTO DB
-//   const { data, error } = await supabase
-//     .from('transactions')
-//     .insert(baseTransaction)
-//     .select()
-//     .single();
-
-//   if (error || !data) {
-//     console.error('Transaction insert failed:', error);
-//     throw new Error('TRANSACTION_SAVE_FAILED');
-//   }
-
-//   // 2️⃣ Update local state ONLY after DB success
-//   setTransactions(prev => [...prev, data]);
-
-//   // 3️⃣ Clear UI
-//   clearCart();
-//   setSelectedCustomer(null);
-
-//   // 4️⃣ Return REAL DB ROW (with id_uuid)
-//   return data as Transaction;
-    // };
-    
 const completeTransaction = async (
   method: PaymentMethod,
   customer: Customer,
@@ -732,9 +622,6 @@ const completeTransaction = async (
   clearCart();
   setSelectedCustomer(null);
 
-  // ❗ مفيش setTransactions هنا
-  // realtime هيعمل كل حاجة
-
   return normalizeTransaction(data);
 };
 
@@ -773,64 +660,6 @@ const completeTransaction = async (
           dbWrite('transactions', 'update', updatedTransaction, transactionId);
       }
   };
-
-//   const collectDebtFromCustomer = (customerId: string, amount: number, method: PaymentMethod) => {
-//       // Just record collection receipt logic here
-//       // For detailed distribution logic, we'd need to update multiple rows.
-//       // Keeping it simple: Add collection receipt + Logic to update oldest debts?
-//       // In this simplified version, we just create a collection receipt and assume manual allocation or future enhancement.
-//       // Ideally: iterate transactions for customer and update them.
-//       let remainingToCollect = amount;
-      
-//       // Update local state and DB for relevant transactions
-//       const customerTrans = transactions.filter(t => t.customerId === customerId && t.paymentMethod === 'credit' && !t.isPaid && t.type !== 'collection')
-//                                     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          
-//       customerTrans.forEach(t => {
-//           if (remainingToCollect <= 0) return;
-//           const paid = t.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-//           const debt = t.total - paid;
-//           const payAmount = Math.min(debt, remainingToCollect);
-          
-//           if (payAmount > 0) {
-//               const newPayment = { id: Date.now().toString() + Math.random(), amount: payAmount, date: new Date().toISOString(), method };
-//               const newPayments = [...(t.payments || []), newPayment];
-//               const updatedT = {
-//                   ...t,
-//                   payments: newPayments,
-//                   isPaid: (paid + payAmount) >= t.total - 0.01
-//               };
-              
-//               // Update State
-//               setTransactions(prev => prev.map(pt => pt.id === t.id ? updatedT : pt));
-//               // Update DB
-//               dbWrite('transactions', 'update', updatedT, t.id);
-              
-//               remainingToCollect -= payAmount;
-//           }
-//       });
-
-//       // Create Collection Receipt
-//     //   const collectionTrans: Transaction = {
-//     //       id: 'col_' + Date.now().toString(),
-//     //       type: 'collection',
-//     //       date: new Date().toISOString(),
-//     //       itemsCount: 0,
-//     //       total: amount,
-//     //       paymentMethod: method,
-//     //       customerId: customerId,
-//     //       customerName: customers.find(c => c.id === customerId)?.name,
-//     //       isPaid: true,
-//     //       items: [],
-//     //       payments: [] // Removed payment array here to prevent double counting in reports
-//     //     };
-      
-//     //   setTransactions(prev => [...prev, collectionTrans]);
-//       //   dbWrite('transactions', 'insert', collectionTrans);
-
-//   };
-    // setTransactions(prev => [...prev, normalizeTransaction(data)]);
-
 
     const collectDebtFromCustomer = (
   customerId: string,

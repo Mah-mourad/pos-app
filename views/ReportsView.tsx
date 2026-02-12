@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { usePOS } from '../context/POSContext';
 import { DollarSign, TrendingUp, TrendingDown, CreditCard, Clock, Package, User, PieChart, X, ShoppingBag, Check, Printer, Trash2, Smartphone, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Layers, AlertTriangle, Ruler, Box, ArrowUpRight, ArrowUpDown } from 'lucide-react';
@@ -92,33 +91,58 @@ const ReportsView: React.FC = () => {
   const getRemainingAmount = (t: Transaction) => t.total - getPaidAmount(t);
 
   // TOTAL SALES: Only count "sale" type transactions to avoid double counting collections
-  const totalSales = filteredTrans
-    .filter(t => t.type !== 'collection')
-    .reduce((sum, t) => sum + t.total, 0);
+//   const totalSales = filteredTrans
+//     .filter(t => t.type !== 'collection')
+    //     .reduce((sum, t) => sum + t.total, 0);
+    const issuedSales = filteredTrans
+  .filter(t => t.type === 'sale')
+  .reduce((sum, t) => sum + t.total, 0);
+
   
-  const creditIssuedInPeriodUnpaid = filteredTrans
-    .filter(t => t.paymentMethod === 'credit' && t.type !== 'collection')
-    .reduce((sum, t) => sum + getRemainingAmount(t), 0);
+//   const creditIssuedInPeriodUnpaid = filteredTrans
+//     .filter(t => t.paymentMethod === 'credit' && t.type !== 'collection')
+//     .reduce((sum, t) => sum + getRemainingAmount(t), 0);
   
+    const totalDebt = filteredTrans
+  .filter(t => t.type === 'sale')
+  .reduce((sum, t) => {
+    const remaining = getRemainingAmount(t);
+    return sum + (remaining > 0 ? remaining : 0);
+  }, 0);
+
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
   
-  let collectedCash = 0;
-  let collectedVodafone = 0;
+//   let collectedCash = 0;
+//   let collectedVodafone = 0;
 
-  // Revenue Calculation
-  transactions.forEach(t => {
-      if (t.payments) {
-          t.payments.forEach(p => {
-              const pDate = new Date(p.date);
-              if (pDate >= start && pDate <= end) {
-                  if (p.method === 'cash') collectedCash += p.amount;
-                  if (p.method === 'vodafone_cash') collectedVodafone += p.amount;
-              }
-          });
-      }
-  });
+//   // Revenue Calculation
+//   transactions.forEach(t => {
+//       if (t.payments) {
+//           t.payments.forEach(p => {
+//               const pDate = new Date(p.date);
+//               if (pDate >= start && pDate <= end) {
+//                   if (p.method === 'cash') collectedCash += p.amount;
+//                   if (p.method === 'vodafone_cash') collectedVodafone += p.amount;
+//               }
+//           });
+//       }
+    //   });
+    const totalCollected = filteredTrans.reduce((sum, t) => {
+  return sum + (t.payments?.reduce((s, p) => s + p.amount, 0) || 0);
+}, 0);
+const collectedCash = filteredTrans.reduce((sum, t) => {
+  return sum + (t.payments?.filter(p => p.method === 'cash')
+    .reduce((s, p) => s + p.amount, 0) || 0);
+}, 0);
 
-  const netTreasury = collectedCash - totalExpenses; // Cash in hand
+const collectedVodafone = filteredTrans.reduce((sum, t) => {
+  return sum + (t.payments?.filter(p => p.method === 'vodafone_cash')
+    .reduce((s, p) => s + p.amount, 0) || 0);
+}, 0);
+
+
+//   const netTreasury = collectedCash - totalExpenses; // Cash in hand
+    const netTreasury = totalCollected - totalExpenses;
 
   // --- DETAILED SALES CALCULATION ---
   interface ProductStat {
@@ -381,7 +405,7 @@ const ReportsView: React.FC = () => {
             </div>
             
             <div class="stats-grid">
-                <div class="stat-box"><div>المبيعات</div><div class="stat-val">${totalSales.toFixed(2)}</div></div>
+                <div class="stat-box"><div>المبيعات</div><div class="stat-val">${issuedSales.toFixed(2)}</div></div>
                 <div class="stat-box"><div>المصروفات</div><div class="stat-val">${totalExpenses.toFixed(2)}</div></div>
                 <div class="stat-box"><div>تحصيل كاش</div><div class="stat-val">${collectedCash.toFixed(2)}</div></div>
                 <div class="stat-box"><div>تحصيل فودافون</div><div class="stat-val">${collectedVodafone.toFixed(2)}</div></div>
@@ -446,8 +470,8 @@ const ReportsView: React.FC = () => {
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-colors"><TrendingUp size={24} /></div>
                 <span className="text-xs font-bold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded">المبيعات</span>
              </div>
-             <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-1">{totalSales.toFixed(2)}</h3>
-             <p className="text-xs text-gray-400 dark:text-gray-500">إجمالي الفواتير المصدرة</p>
+             <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-1">{issuedSales.toFixed(2)}</h3>
+             <p className="text-xs text-gray-400 dark:text-gray-500">إجمالي الفواتير (مبيعات)</p>
           </div>
 
           {/* Expenses Card */}
@@ -478,7 +502,7 @@ const ReportsView: React.FC = () => {
                 <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-500 dark:text-yellow-400 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors"><CreditCard size={24} /></div>
                 <span className="text-xs font-bold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded">آجل</span>
              </div>
-             <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-1">{creditIssuedInPeriodUnpaid.toFixed(2)}</h3>
+             <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-1">{totalDebt.toFixed(2)}</h3>
              <p className="text-xs text-gray-400 dark:text-gray-500">متبقي من فواتير الفترة</p>
           </div>
 
@@ -502,7 +526,7 @@ const ReportsView: React.FC = () => {
               <div className="p-2 md:p-4">
                 <div className="space-y-2 md:space-y-3">
                     {Object.entries(categoryStats).map(([cat, stats]) => {
-                        const percentage = totalSales > 0 ? (stats.total / totalSales) * 100 : 0;
+                        const percentage = issuedSales > 0 ? (stats.total / issuedSales) * 100 : 0;
                         if (stats.total === 0) return null;
 
                         return (
@@ -543,7 +567,7 @@ const ReportsView: React.FC = () => {
                <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-6">ملخص التوزيع</h3>
                <div className="space-y-6">
                    {Object.entries(categoryStats).map(([cat, stats]) => {
-                       const percentage = totalSales > 0 ? (stats.total / totalSales) * 100 : 0;
+                       const percentage = issuedSales > 0 ? (stats.total / issuedSales) * 100 : 0;
                        if (stats.total === 0) return null;
                        return (
                            <div key={cat}>

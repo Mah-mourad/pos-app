@@ -4,17 +4,8 @@ import ProductCard from '../components/ProductCard';
 import CartSidebar from '../components/CartSidebar';
 import ProductConfigModal from '../components/ProductConfigModal';
 import { usePOS } from '../context/POSContext';
-// import { Product, CartItem, PricingMethod, Service } from '../types';
 import { Product, CartItem, PricingMethod, Service, Category } from '../types';
-// import { createTransaction } from '../handle_tool/transactions.service';
 import { createTransaction } from '../services/transactions.service';
-
-// let createTransaction: any;
-
-// if ((window as any)?.electron) {
-//   createTransaction =
-//     require('../handle_tool/transactions.service').createTransaction;
-// }
 
 
 const POSView: React.FC = () => {

@@ -90,16 +90,6 @@ if (!finalCustomer) {
   return;
 }
 
-
-
-    // const transaction = completeTransaction(
-    //   paymentMethod,
-    //   finalCustomer,
-    //   paymentMethod === 'credit'
-    //     ? parseFloat(downPayment) || 0
-    //     : undefined
-    // );
-
     const transaction = await completeTransaction(
   paymentMethod,
   finalCustomer,
@@ -136,7 +126,6 @@ if (!finalCustomer) {
     setIsSaving(false);
   }
 };
-
 
 
   const remainingDebt = totalAmount - (parseFloat(downPayment) || 0);

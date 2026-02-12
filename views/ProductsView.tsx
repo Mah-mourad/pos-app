@@ -219,8 +219,8 @@ const ProductsView: React.FC = () => {
                  <div className="flex-1">
                      <div className="flex flex-wrap gap-2">
                         {categories.map((cat) => (
-                            <div key={cat} className="group flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-lg hover:border-red-200 transition-colors">
-                                {editingCategory?.old === cat ? (
+                            <div key={cat.name} className="group flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-lg hover:border-red-200 transition-colors">
+                                {editingCategory?.old === cat.name ? (
                                     <div className="flex items-center gap-2">
                                         <input 
                                             value={editingCategory.new}
@@ -235,7 +235,7 @@ const ProductsView: React.FC = () => {
                                     <>
                                         <span className="font-medium text-gray-700 dark:text-gray-200">{cat}</span>
                                         <div className="flex gap-1 border-l border-gray-200 dark:border-gray-700 pl-2">
-                                            <button onClick={() => setEditingCategory({old: cat, new: cat})} className="text-gray-400 hover:text-blue-500 transition-colors p-1"><Edit3 size={12} /></button>
+                                            <button onClick={() => setEditingCategory({old: cat.name, new: cat.name})} className="text-gray-400 hover:text-blue-500 transition-colors p-1"><Edit3 size={12} /></button>
                                             <button onClick={() => deleteCategory(cat)} className="text-gray-400 hover:text-red-500 transition-colors p-1"><X size={14} /></button>
                                         </div>
                                     </>
